@@ -1,0 +1,40 @@
+# Gentoo overlay file attributes
+
+# Text files - normalize line endings
+* text=auto eol=lf
+
+# Ebuild files
+*.ebuild text eol=lf
+*.eclass text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Configuration files
+*.conf text eol=lf
+*.cfg text eol=lf
+metadata.xml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Patches
+*.patch text eol=lf
+*.diff text eol=lf
+
+# Binary files
+*.tar.gz binary
+*.tar.xz binary
+*.zip binary
+*.rpm binary
+*.deb binary
+*.AppImage binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+
+# Archive handling for distfiles (if you store any)
+distfiles/* binary
+
+# Manifest files are text but generated
+Manifest text eol=lf
