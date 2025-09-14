@@ -1,0 +1,30 @@
+diff --git a/block/nfs.c b/block/nfs.c
+index 0a7d38d..93e4bbf 100644
+--- a/block/nfs.c
++++ b/block/nfs.c
+@@ -70,7 +70,9 @@ typedef struct NFSRPC {
+     BlockDriverState *bs;
+     int ret;
+     int complete;
++#ifndef LIBNFS_API_V2
+     QEMUIOVector *iov;
++#endif
+     struct stat *st;
+     Coroutine *co;
+     NFSClient *client;
+@@ -246,6 +248,7 @@ nfs_co_generic_cb(int ret, struct nfs_context *nfs, void *data,
+     NFSRPC *task = private_data;
+     task->ret = ret;
+     assert(!task->st);
++#ifndef LIBNFS_API_V2
+     if (task->ret > 0 && task->iov) {
+         if (task->ret <= task->iov->size) {
+             qemu_iovec_from_buf(task->iov, 0, data, task->ret);
+@@ -253,6 +256,7 @@ nfs_co_generic_cb(int ret, struct nfs_context *nfs, void *data,
+             task->ret = -EIO;
+         }
+     }
++#endif
+     if (task->ret < 0) {
+         error_report("NFS Error: %s", nfs_get_error(nfs));
+     }

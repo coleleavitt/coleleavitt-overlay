@@ -1,0 +1,15 @@
+# Temporary portage files
+*.pyc
+__pycache__/
+.cache/
+distfiles/
+packages/
+
+# Editor files
+*~
+.*.swp
+.*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

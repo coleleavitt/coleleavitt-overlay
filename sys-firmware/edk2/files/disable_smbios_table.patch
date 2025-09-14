@@ -1,0 +1,71 @@
+--- a/OvmfPkg/SmbiosPlatformDxe/Qemu.c
++++ b/OvmfPkg/SmbiosPlatformDxe/Qemu.c
+@@ -1,20 +1,32 @@
+ /** @file
+   Find and extract QEMU SMBIOS data from fw_cfg.
++
++  This file has been modified to disable SMBIOS table loading from QEMU
++  in order to bypass Virtual Machine detection mechanisms.
++
+   Copyright (C) 2014, Gabriel L. Somlo <somlo@cmu.edu>
+ 
+   SPDX-License-Identifier: BSD-2-Clause-Patent
+ **/
+ 
+-#include <Library/DebugLib.h>            // ASSERT_EFI_ERROR()
+-#include <Library/MemoryAllocationLib.h> // AllocatePool()
+-#include <Library/PcdLib.h>              // PcdGetBool()
+-#include <Library/QemuFwCfgLib.h>        // QemuFwCfgFindFile()
++#include <Library/DebugLib.h>
++#include <Library/MemoryAllocationLib.h>
++#include <Library/PcdLib.h>
++#include <Library/QemuFwCfgLib.h>
+ 
+ /**
+-  Locates and extracts the QEMU SMBIOS data if present in fw_cfg
++  Locates and extracts the QEMU SMBIOS data if present in fw_cfg.
++
++  This function is intentionally neutralized to always return NULL. That
++  prevents the use of QEMU’s built-in tables, which leak VM signatures.
++
++  By returning NULL we force SmbiosPlatformDxe to build its own tables.
+ 
+-  @return                 Address of extracted QEMU SMBIOS data
++  @return    Always returns NULL.
+ **/
+@@ -22,30 +22,10 @@ QemuPlatformGetSmbios (
+   VOID
+   )
+ {
+-  EFI_STATUS            Status;
+-  FIRMWARE_CONFIG_ITEM  Tables;
+-  UINTN                 TablesSize;
+-  UINT8                 *QemuTables;
+-
+-  if (!PcdGetBool (PcdQemuSmbiosValidated)) {
+-    return NULL;
+-  }
+-
+-  Status = QemuFwCfgFindFile (
+-             "etc/smbios/smbios-tables",
+-             &Tables,
+-             &TablesSize
+-             );
+-  ASSERT_EFI_ERROR (Status);
+-  ASSERT (TablesSize > 0);
+-
+-  QemuTables = AllocatePool (TablesSize);
+-  if (QemuTables == NULL) {
+-    return NULL;
+-  }
+-
+-  QemuFwCfgSelectItem (Tables);
+-  QemuFwCfgReadBytes (TablesSize, QemuTables);
+-
+-  return QemuTables;
++  //
++  // Force-disable SMBIOS table loading from QEMU fw_cfg.
++  //
++  return NULL;
+ }
+

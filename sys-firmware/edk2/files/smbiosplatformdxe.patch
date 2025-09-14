@@ -1,0 +1,28 @@
+--- edk2-edk2-stable202505/OvmfPkg/SmbiosPlatformDxe/SmbiosPlatformDxe.c	2025-06-12 13:35:33.677428282 -0700
++++ edk2-edk2-stable202505/OvmfPkg/SmbiosPlatformDxe/SmbiosPlatformDxe.c	2025-06-12 13:46:45.010609031 -0700
+@@ -38,15 +38,9 @@
+   },
+   {      // BIOSCharacteristicsExtensionBytes[2]
+     0,   // BiosReserved
+-    //
+-    // SystemReserved:
+-    // - UefiSpecificationSupported (Bit 4)
+-    // - TargetContentDistributionEnabled (Bit 3)
+-    //
+-    // The VirtualMachineSupported flag (Bit 2) has been deliberately
+-    // cleared to bypass VM detection mechanisms. Original value was 0x1C.
+-    //
+-    0x18
++    0x1C // SystemReserved = VirtualMachineSupported |
++    //                  UefiSpecificationSupported |
++    //                  TargetContentDistributionEnabled
+   },
+   0,     // UINT8                     SystemBiosMajorRelease
+   0,     // UINT8                     SystemBiosMinorRelease
+@@ -197,4 +191,4 @@
+   }
+ 
+   return EFI_SUCCESS;
+-}
+\ No newline at end of file
++}
