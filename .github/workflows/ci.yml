@@ -18,7 +18,7 @@ jobs:
           emerge-webrsync
 
       - name: Install QA tools
-        run: emerge -q app-portage/pkgcheck app-portage/pkgdev
+        run: emerge -q dev-util/pkgcheck dev-util/pkgdev
 
       - name: Run pkgcheck
         run: pkgcheck scan --net
