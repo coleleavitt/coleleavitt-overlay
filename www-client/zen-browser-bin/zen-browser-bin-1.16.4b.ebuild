@@ -98,27 +98,13 @@ EOF
 	newexe zen-wrapper zen-browser
 	dosym zen-browser /usr/bin/zen
 
-	# Install icons (check for available sizes in the actual directory structure)
+	# Install icons from the extracted archive
 	local icon_sizes=(16 32 48 64 128)
 	local size
 	for size in "${icon_sizes[@]}"; do
 		local icon_path="browser/chrome/icons/default/default${size}.png"
-		if [[ -f "${D}${destdir}/${icon_path}" ]]; then
-			newicon -s ${size} "${D}${destdir}/${icon_path}" zen-browser.png
-		fi
-	done
-
-	# Fallback icon installation - try common locations
-	local fallback_icons=(
-		"browser/chrome/icons/default/default48.png"
-		"browser/chrome/icons/default/default32.png"
-		"browser/chrome/icons/default/default16.png"
-	)
-	local icon_installed=false
-	for icon_path in "${fallback_icons[@]}"; do
-		if [[ -f "${D}${destdir}/${icon_path}" && "${icon_installed}" == false ]]; then
-			newicon "${D}${destdir}/${icon_path}" zen-browser.png
-			icon_installed=true
+		if [[ -f "${icon_path}" ]]; then
+			newicon -s ${size} "${icon_path}" zen-browser.png
 		fi
 	done
 
