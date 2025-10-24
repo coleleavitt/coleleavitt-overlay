@@ -19,12 +19,10 @@ jobs:
           mkdir -p /etc/portage/binrepos.conf
 
           # Disable binary package signature verification in CI
-          cat > /etc/portage/binrepos.conf/gentoobinhost.conf <<'EOF'
-[gentoobinhost]
-priority = 9999
-sync-uri = https://distfiles.gentoo.org/releases/amd64/binpackages/23.0/x86-64-v3/
-gpg-verify = no
-EOF
+          echo '[gentoobinhost]' > /etc/portage/binrepos.conf/gentoobinhost.conf
+          echo 'priority = 9999' >> /etc/portage/binrepos.conf/gentoobinhost.conf
+          echo 'sync-uri = https://distfiles.gentoo.org/releases/amd64/binpackages/23.0/x86-64-v3/' >> /etc/portage/binrepos.conf/gentoobinhost.conf
+          echo 'gpg-verify = no' >> /etc/portage/binrepos.conf/gentoobinhost.conf
 
           # Enable binary package features
           echo 'FEATURES="${FEATURES} binpkg-multi-instance getbinpkg"' >> /etc/portage/make.conf
