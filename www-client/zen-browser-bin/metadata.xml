@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>coleleavitt@users.noreply.github.com</email>
+		<name>Cole Leavitt</name>
+	</maintainer>
+	<longdescription>
+		Zen Browser is a fast, privacy-focused Firefox fork with a modern interface
+		and enhanced customization options. It includes features like vertical tabs,
+		workspace management, and improved performance optimizations.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">zen-browser/desktop</remote-id>
+	</upstream>
+	<use>
+		<flag name="X">Enable X11 support</flag>
+	</use>
+</pkgmetadata>
