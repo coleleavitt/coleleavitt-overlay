@@ -43,6 +43,12 @@ jobs:
             echo "No update needed"
           fi
 
+      - name: Install b2sum
+        if: steps.check.outputs.update-needed == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y coreutils
+
       - name: Generate new ebuild and update manifest
         if: steps.check.outputs.update-needed == 'true'
         run: |
@@ -56,16 +62,28 @@ jobs:
           echo "Copying $LATEST_EBUILD to $NEW_EBUILD"
           cp "$LATEST_EBUILD" "$NEW_EBUILD"
 
-          # Download Cargo.lock to get crate dependencies
-          echo "Downloading Cargo.lock from release..."
-          curl -sL "https://github.com/YaLTeR/niri/archive/refs/tags/v${NEW_VERSION}.tar.gz" -o niri-${NEW_VERSION}.tar.gz
+          # Download source tarball and calculate checksums
+          echo "Downloading source tarball..."
+          wget -q -O /tmp/niri-${NEW_VERSION}.tar.gz "https://github.com/YaLTeR/niri/archive/refs/tags/v${NEW_VERSION}.tar.gz"
 
-          # Note: Manifest generation for Rust crates requires ebuild command
-          # which is only available on Gentoo systems with portage
-          echo "DIST niri-${NEW_VERSION}.tar.gz - BLAKE2B - SHA512 -" >> Manifest
+          # Calculate checksums and file size
+          TARBALL_SIZE=$(stat -c%s /tmp/niri-${NEW_VERSION}.tar.gz)
+          TARBALL_BLAKE2B=$(b2sum /tmp/niri-${NEW_VERSION}.tar.gz | awk '{print $1}')
+          TARBALL_SHA512=$(sha512sum /tmp/niri-${NEW_VERSION}.tar.gz | awk '{print $1}')
+
+          echo "Source tarball: ${TARBALL_SIZE} bytes"
+          echo "BLAKE2B: ${TARBALL_BLAKE2B}"
+          echo "SHA512: ${TARBALL_SHA512}"
+
+          # Update manifest with source tarball checksums
+          # Note: Rust crate dependencies will still need ebuild manifest command
+          echo "DIST niri-${NEW_VERSION}.tar.gz ${TARBALL_SIZE} BLAKE2B ${TARBALL_BLAKE2B} SHA512 ${TARBALL_SHA512}" >> Manifest
+
+          # Clean up
+          rm -f /tmp/niri-${NEW_VERSION}.tar.gz
 
           echo "Generated new ebuild for version ${NEW_VERSION}"
-          echo "WARNING: Manifest needs manual update with: ebuild niri-${NEW_VERSION}.ebuild manifest"
+          echo "WARNING: Rust crate dependencies in Manifest still need: ebuild niri-${NEW_VERSION}.ebuild manifest"
 
       - name: Create Pull Request
         if: steps.check.outputs.update-needed == 'true'
@@ -81,15 +99,16 @@ jobs:
 
             Changes:
             - New ebuild: niri-${{ steps.check.outputs.version }}.ebuild
-            - Manifest requires manual update (Rust crates)
+            - Updated Manifest with verified checksums for source tarball
+            - Rust crate dependencies still need portage to generate
 
             Release notes: https://github.com/YaLTeR/niri/releases/tag/v${{ steps.check.outputs.version }}
 
-            **WARNING: Manual steps REQUIRED:**
+            **Manual steps required:**
             ```bash
             cd gui-wm/niri
 
-            # Generate proper Manifest with all Rust crate hashes
+            # Generate Manifest entries for all Rust crate dependencies
             sudo ebuild niri-${{ steps.check.outputs.version }}.ebuild manifest
 
             # Commit the updated Manifest
@@ -98,7 +117,7 @@ jobs:
             git push --force
             ```
 
-            This PR contains the new ebuild but the Manifest **must** be generated on a Gentoo system with portage.
+            The source tarball checksum is verified, but Rust crate dependencies must be generated on a Gentoo system with portage.
           branch: auto-update/niri-${{ steps.check.outputs.version }}
           delete-branch: true
           labels: |
