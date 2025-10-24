@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>maintainer-needed@gentoo.org</email>
+	</maintainer>
+	<longdescription>
+		Binary package of WebKitGTK 2.48.7 with webkit2gtk-4.1 API extracted from Ubuntu 22.04.
+		This provides a pre-compiled WebKitGTK installation for Tauri and other applications
+		without requiring lengthy compilation times.
+	</longdescription>
+</pkgmetadata>
