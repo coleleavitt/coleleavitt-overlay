@@ -16,7 +16,7 @@ EGIT_SUBMODULES=( '*' )  # Include all submodules
 KEYWORDS="~amd64"
 LICENSE="GPL-2"
 SLOT="0"
-IUSE="binutils gnome pipewire pulseaudio wayland X"
+IUSE="binutils gnome pipewire pulseaudio wayland +X"
 REQUIRED_USE="|| ( wayland X )"
 
 RDEPEND="

@@ -13,12 +13,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
+      - name: Setup Portage for binary packages
+        run: |
+          # Enable binary package support
+          mkdir -p /etc/portage
+          echo 'FEATURES="${FEATURES} binpkg-multi-instance getbinpkg"' >> /etc/portage/make.conf
+          echo 'EMERGE_DEFAULT_OPTS="${EMERGE_DEFAULT_OPTS} --binpkg-respect-use=y --usepkg=y --getbinpkg=y"' >> /etc/portage/make.conf
+
+          # Use Gentoo's official binhost
+          echo 'GENTOO_MIRRORS="https://distfiles.gentoo.org"' >> /etc/portage/make.conf
+          echo 'PORTAGE_BINHOST="https://distfiles.gentoo.org/releases/amd64/binpackages/23.0/x86-64-v3/"' >> /etc/portage/make.conf
+
+      - name: Cache Portage packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/binpkgs
+            /var/db/repos/gentoo
+          key: gentoo-pkgcheck-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}
+          restore-keys: |
+            gentoo-pkgcheck-${{ runner.os }}-
+
       - name: Update Portage
         run: |
           emerge-webrsync
 
       - name: Install QA tools
-        run: emerge -q dev-util/pkgcheck dev-util/pkgdev
+        run: |
+          # Try to use binary packages, fall back to building if needed
+          emerge -q --usepkg --getbinpkg dev-util/pkgcheck dev-util/pkgdev || \
+          emerge -q dev-util/pkgcheck dev-util/pkgdev
 
       - name: Run pkgcheck
         run: |
