@@ -1,0 +1,29 @@
+name: Gentoo Overlay QA
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pkgcheck:
+    runs-on: ubuntu-latest
+    container:
+      image: gentoo/stage3:latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Update Portage
+        run: |
+          emerge-webrsync
+
+      - name: Install QA tools
+        run: emerge -q app-portage/pkgcheck app-portage/pkgdev
+
+      - name: Run pkgcheck
+        run: pkgcheck scan --net
+        continue-on-error: true  # Don't fail on warnings initially
+
+      - name: Check for critical errors
+        run: |
+          pkgcheck scan --net --exit error
