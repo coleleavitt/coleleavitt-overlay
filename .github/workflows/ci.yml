@@ -13,27 +13,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
-      - name: Cache Portage data
+      - name: Cache Portage tree and distfiles
         uses: actions/cache@v4
         with:
           path: |
-            /var/cache/distfiles
             /var/db/repos/gentoo
-            /var/cache/binpkgs
-            /var/tmp/portage
-          key: gentoo-portage-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}-${{ github.run_id }}
+            /var/cache/distfiles
+          key: gentoo-tree-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}
           restore-keys: |
-            gentoo-portage-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}-
-            gentoo-portage-${{ runner.os }}-
+            gentoo-tree-${{ runner.os }}-
+
+      - name: Cache built QA tools
+        id: cache-qa
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/binpkgs
+          key: gentoo-qa-binpkgs-${{ runner.os }}-v1
+          restore-keys: |
+            gentoo-qa-binpkgs-${{ runner.os }}-
 
       - name: Update Portage
         run: |
           emerge-webrsync
 
+      - name: Enable binary package building
+        run: |
+          echo 'FEATURES="${FEATURES} buildpkg"' >> /etc/portage/make.conf
+          mkdir -p /var/cache/binpkgs
+
       - name: Install QA tools
         run: |
-          # Install QA tools (will use cached build artifacts if available)
-          emerge -q dev-util/pkgcheck dev-util/pkgdev
+          # Use cached binary packages if available, otherwise build from source
+          if ls /var/cache/binpkgs/*.gpkg.tar >/dev/null 2>&1; then
+            echo "Found cached binary packages, attempting to use them"
+            emerge -q --usepkg dev-util/pkgcheck dev-util/pkgdev || emerge -q dev-util/pkgcheck dev-util/pkgdev
+          else
+            echo "No cached packages found, building from source"
+            emerge -q dev-util/pkgcheck dev-util/pkgdev
+          fi
 
       - name: Run pkgcheck
         run: |
