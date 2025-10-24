@@ -58,20 +58,18 @@ jobs:
           AMD64_URL="https://github.com/zen-browser/desktop/releases/download/${NEW_VERSION}/zen.linux-x86_64.tar.xz"
           ARM64_URL="https://github.com/zen-browser/desktop/releases/download/${NEW_VERSION}/zen.linux-aarch64.tar.xz"
 
-          AMD64_SIZE=$(curl -sI "${AMD64_URL}" | grep -i content-length | awk '{print $2}' | tr -d '\r')
-          ARM64_SIZE=$(curl -sI "${ARM64_URL}" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+          # Get file sizes with follow redirects
+          AMD64_SIZE=$(curl -sIL "${AMD64_URL}" | grep -i '^content-length:' | tail -1 | awk '{print $2}' | tr -d '\r')
+          ARM64_SIZE=$(curl -sIL "${ARM64_URL}" | grep -i '^content-length:' | tail -1 | awk '{print $2}' | tr -d '\r')
 
-          # Verify the files actually exist (HTTP 200)
-          AMD64_STATUS=$(curl -sI "${AMD64_URL}" | head -n 1 | awk '{print $2}')
-          ARM64_STATUS=$(curl -sI "${ARM64_URL}" | head -n 1 | awk '{print $2}')
-
-          if [ "$AMD64_STATUS" != "200" ] && [ "$AMD64_STATUS" != "302" ]; then
-            echo "ERROR: AMD64 file not found at ${AMD64_URL}"
+          # Verify we got valid sizes
+          if [ -z "$AMD64_SIZE" ] || [ "$AMD64_SIZE" = "0" ]; then
+            echo "ERROR: Could not determine AMD64 file size from ${AMD64_URL}"
             exit 1
           fi
 
-          if [ "$ARM64_STATUS" != "200" ] && [ "$ARM64_STATUS" != "302" ]; then
-            echo "ERROR: ARM64 file not found at ${ARM64_URL}"
+          if [ -z "$ARM64_SIZE" ] || [ "$ARM64_SIZE" = "0" ]; then
+            echo "ERROR: Could not determine ARM64 file size from ${ARM64_URL}"
             exit 1
           fi
 

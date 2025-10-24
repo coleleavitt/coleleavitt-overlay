@@ -17,7 +17,7 @@ jobs:
         run: |
           # Enable binary package support
           mkdir -p /etc/portage
-          echo 'FEATURES="${FEATURES} binpkg-multi-instance getbinpkg"' >> /etc/portage/make.conf
+          echo 'FEATURES="${FEATURES} binpkg-multi-instance getbinpkg -binpkg-request-signature"' >> /etc/portage/make.conf
           echo 'EMERGE_DEFAULT_OPTS="${EMERGE_DEFAULT_OPTS} --binpkg-respect-use=y --usepkg=y --getbinpkg=y"' >> /etc/portage/make.conf
 
           # Use Gentoo's official binhost
