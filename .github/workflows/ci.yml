@@ -13,31 +13,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
-      - name: Setup Portage for binary packages
-        run: |
-          # Configure Portage for binary packages
-          mkdir -p /etc/portage/binrepos.conf
-
-          # Disable binary package signature verification in CI
-          echo '[gentoobinhost]' > /etc/portage/binrepos.conf/gentoobinhost.conf
-          echo 'priority = 9999' >> /etc/portage/binrepos.conf/gentoobinhost.conf
-          echo 'sync-uri = https://distfiles.gentoo.org/releases/amd64/binpackages/23.0/x86-64-v3/' >> /etc/portage/binrepos.conf/gentoobinhost.conf
-          echo 'gpg-verify = no' >> /etc/portage/binrepos.conf/gentoobinhost.conf
-
-          # Enable binary package features
-          echo 'FEATURES="${FEATURES} binpkg-multi-instance getbinpkg"' >> /etc/portage/make.conf
-          echo 'EMERGE_DEFAULT_OPTS="${EMERGE_DEFAULT_OPTS} --binpkg-respect-use=y --usepkg=y --getbinpkg=y"' >> /etc/portage/make.conf
-          echo 'GENTOO_MIRRORS="https://distfiles.gentoo.org"' >> /etc/portage/make.conf
-
-      - name: Cache Portage packages
+      - name: Cache Portage data
         uses: actions/cache@v4
         with:
           path: |
-            /var/cache/binpkgs
+            /var/cache/distfiles
             /var/db/repos/gentoo
-          key: gentoo-pkgcheck-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}
+            /var/cache/binpkgs
+            /var/tmp/portage
+          key: gentoo-portage-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}-${{ github.run_id }}
           restore-keys: |
-            gentoo-pkgcheck-${{ runner.os }}-
+            gentoo-portage-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}-
+            gentoo-portage-${{ runner.os }}-
 
       - name: Update Portage
         run: |
@@ -45,8 +32,7 @@ jobs:
 
       - name: Install QA tools
         run: |
-          # Try to use binary packages, fall back to building if needed
-          emerge -q --usepkg --getbinpkg dev-util/pkgcheck dev-util/pkgdev || \
+          # Install QA tools (will use cached build artifacts if available)
           emerge -q dev-util/pkgcheck dev-util/pkgdev
 
       - name: Run pkgcheck
