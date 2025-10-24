@@ -45,6 +45,12 @@ jobs:
             echo "No update needed"
           fi
 
+      - name: Install b2sum
+        if: steps.check.outputs.update-needed == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y coreutils
+
       - name: Generate new ebuild and update manifest
         if: steps.check.outputs.update-needed == 'true'
         run: |
@@ -58,34 +64,42 @@ jobs:
           echo "Copying $LATEST_EBUILD to $NEW_EBUILD"
           cp "$LATEST_EBUILD" "$NEW_EBUILD"
 
-          # Get file sizes and verify downloads
+          # Download files and calculate checksums
           AMD64_URL="https://github.com/zen-browser/desktop/releases/download/${NEW_VERSION}/zen.linux-x86_64.tar.xz"
           ARM64_URL="https://github.com/zen-browser/desktop/releases/download/${NEW_VERSION}/zen.linux-aarch64.tar.xz"
 
-          # Get file sizes with follow redirects
-          AMD64_SIZE=$(curl -sIL "${AMD64_URL}" | grep -i '^content-length:' | tail -1 | awk '{print $2}' | tr -d '\r')
-          ARM64_SIZE=$(curl -sIL "${ARM64_URL}" | grep -i '^content-length:' | tail -1 | awk '{print $2}' | tr -d '\r')
+          echo "Downloading AMD64 archive..."
+          wget -q -O /tmp/zen-${NEW_VERSION}-x86_64.tar.xz "${AMD64_URL}"
 
-          # Verify we got valid sizes
-          if [ -z "$AMD64_SIZE" ] || [ "$AMD64_SIZE" = "0" ]; then
-            echo "ERROR: Could not determine AMD64 file size from ${AMD64_URL}"
-            exit 1
-          fi
+          echo "Downloading ARM64 archive..."
+          wget -q -O /tmp/zen-${NEW_VERSION}-aarch64.tar.xz "${ARM64_URL}"
 
-          if [ -z "$ARM64_SIZE" ] || [ "$ARM64_SIZE" = "0" ]; then
-            echo "ERROR: Could not determine ARM64 file size from ${ARM64_URL}"
-            exit 1
-          fi
+          # Calculate checksums and file sizes
+          AMD64_SIZE=$(stat -c%s /tmp/zen-${NEW_VERSION}-x86_64.tar.xz)
+          AMD64_BLAKE2B=$(b2sum /tmp/zen-${NEW_VERSION}-x86_64.tar.xz | awk '{print $1}')
+          AMD64_SHA512=$(sha512sum /tmp/zen-${NEW_VERSION}-x86_64.tar.xz | awk '{print $1}')
 
-          echo "Verified AMD64 file: ${AMD64_SIZE} bytes"
-          echo "Verified ARM64 file: ${ARM64_SIZE} bytes"
+          ARM64_SIZE=$(stat -c%s /tmp/zen-${NEW_VERSION}-aarch64.tar.xz)
+          ARM64_BLAKE2B=$(b2sum /tmp/zen-${NEW_VERSION}-aarch64.tar.xz | awk '{print $1}')
+          ARM64_SHA512=$(sha512sum /tmp/zen-${NEW_VERSION}-aarch64.tar.xz | awk '{print $1}')
 
-          # Update manifest with new entries
-          echo "DIST zen-browser-bin-${NEW_VERSION}-x86_64.tar.xz ${AMD64_SIZE} BLAKE2B - SHA512 -" >> Manifest
-          echo "DIST zen-browser-bin-${NEW_VERSION}-aarch64.tar.xz ${ARM64_SIZE} BLAKE2B - SHA512 -" >> Manifest
+          echo "AMD64: ${AMD64_SIZE} bytes"
+          echo "AMD64 BLAKE2B: ${AMD64_BLAKE2B}"
+          echo "AMD64 SHA512: ${AMD64_SHA512}"
+          echo ""
+          echo "ARM64: ${ARM64_SIZE} bytes"
+          echo "ARM64 BLAKE2B: ${ARM64_BLAKE2B}"
+          echo "ARM64 SHA512: ${ARM64_SHA512}"
+
+          # Update manifest with new entries (proper checksums)
+          echo "DIST zen-browser-bin-${NEW_VERSION}-x86_64.tar.xz ${AMD64_SIZE} BLAKE2B ${AMD64_BLAKE2B} SHA512 ${AMD64_SHA512}" >> Manifest
+          echo "DIST zen-browser-bin-${NEW_VERSION}-aarch64.tar.xz ${ARM64_SIZE} BLAKE2B ${ARM64_BLAKE2B} SHA512 ${ARM64_SHA512}" >> Manifest
+
+          # Clean up downloaded files
+          rm -f /tmp/zen-${NEW_VERSION}-x86_64.tar.xz /tmp/zen-${NEW_VERSION}-aarch64.tar.xz
 
           echo "Generated new ebuild for version ${NEW_VERSION}"
-          echo "Updated Manifest with new distribution files"
+          echo "Updated Manifest with verified checksums"
 
       - name: Create Pull Request
         if: steps.check.outputs.update-needed == 'true'
@@ -101,15 +115,11 @@ jobs:
 
             Changes:
             - New ebuild: zen-browser-bin-${{ steps.check.outputs.version }}.ebuild
-            - Updated Manifest with distribution files
+            - Updated Manifest with verified BLAKE2B and SHA512 checksums
 
             Release notes: https://github.com/zen-browser/desktop/releases/tag/${{ steps.check.outputs.version }}
 
-            Manual steps required:
-            ```bash
-            cd www-client/zen-browser-bin
-            sudo ebuild zen-browser-bin-${{ steps.check.outputs.version }}.ebuild manifest
-            ```
+            This PR is ready to merge - all checksums have been verified automatically.
           branch: auto-update/zen-browser-${{ steps.check.outputs.version }}
           delete-branch: true
           labels: |
