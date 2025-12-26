@@ -99,7 +99,18 @@ jobs:
           echo "Generated new ebuild for version ${NEW_VERSION}"
           echo "Updated Manifest with verified checksums"
 
+      - name: Close stale PRs for this package
+        if: steps.check.outputs.update-needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state open --json number,title --jq '.[] | select(.title | startswith("net-im/vesktop-bin:")) | .number' | while read pr_num; do
+            echo "Closing stale PR #${pr_num}"
+            gh pr close "$pr_num" --comment "Superseded by newer version update"
+          done
+
       - name: Create Pull Request
+        id: create-pr
         if: steps.check.outputs.update-needed == 'true'
         uses: peter-evans/create-pull-request@v7.0.5
         with:
@@ -124,11 +135,19 @@ jobs:
             automated
             bump
 
+      - name: Auto-merge PR
+        if: steps.check.outputs.update-needed == 'true' && steps.create-pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.create-pr.outputs.pull-request-number }}"
+          echo "Auto-merging PR #${PR_NUM}"
+          gh pr merge "$PR_NUM" --merge --auto
+
       - name: Summary
         run: |
           if [ "${{ steps.check.outputs.update-needed }}" == "true" ]; then
-            echo "Created PR for Vesktop ${{ steps.check.outputs.version }}"
-            echo "Check: https://github.com/${{ github.repository }}/pulls"
+            echo "Created and auto-merged PR for Vesktop ${{ steps.check.outputs.version }}"
           else
             echo "No update needed - already at latest version"
           fi

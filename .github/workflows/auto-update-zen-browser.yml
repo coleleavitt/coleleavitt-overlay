@@ -78,14 +78,13 @@ jobs:
           echo "Downloading ARM64 archive..."
           wget -q -O /tmp/zen.linux-aarch64.tar.xz "${ARM64_URL}"
 
-          # Calculate checksums using CORRECT Gentoo format
+          # Calculate checksums using CORRECT Gentoo format (BLAKE2B-512, full 128-char hash)
           AMD64_SIZE=$(stat -c%s /tmp/zen.linux-x86_64.tar.xz)
-          # Use BLAKE2B (256-bit) not BLAKE2B-512 
-          AMD64_BLAKE2B=$(b2sum -l 256 /tmp/zen.linux-x86_64.tar.xz | awk '{print $1}')
+          AMD64_BLAKE2B=$(b2sum /tmp/zen.linux-x86_64.tar.xz | awk '{print $1}')
           AMD64_SHA512=$(sha512sum /tmp/zen.linux-x86_64.tar.xz | awk '{print $1}')
 
           ARM64_SIZE=$(stat -c%s /tmp/zen.linux-aarch64.tar.xz)
-          ARM64_BLAKE2B=$(b2sum -l 256 /tmp/zen.linux-aarch64.tar.xz | awk '{print $1}')
+          ARM64_BLAKE2B=$(b2sum /tmp/zen.linux-aarch64.tar.xz | awk '{print $1}')
           ARM64_SHA512=$(sha512sum /tmp/zen.linux-aarch64.tar.xz | awk '{print $1}')
 
           echo "AMD64: ${AMD64_SIZE} bytes"
@@ -109,7 +108,18 @@ jobs:
           echo "Generated new ebuild for version ${NEW_VERSION}"
           echo "Generated Manifest with verified Gentoo-standard checksums"
 
+      - name: Close stale PRs for this package
+        if: steps.check.outputs.update-needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state open --json number,title --jq '.[] | select(.title | startswith("www-client/zen-browser-bin:")) | .number' | while read pr_num; do
+            echo "Closing stale PR #${pr_num}"
+            gh pr close "$pr_num" --comment "Superseded by newer version update"
+          done
+
       - name: Create Pull Request
+        id: create-pr
         if: steps.check.outputs.update-needed == 'true'
         uses: peter-evans/create-pull-request@v7.0.5
         with:
@@ -123,7 +133,7 @@ jobs:
 
             Changes:
             - New ebuild: zen-browser-bin-${{ steps.check.outputs.version }}.ebuild
-            - Updated Manifest with verified BLAKE2B (256-bit) and SHA512 checksums
+            - Updated Manifest with verified BLAKE2B and SHA512 checksums
 
             Release notes: https://github.com/zen-browser/desktop/releases/tag/${{ steps.check.outputs.version }}
 
@@ -134,11 +144,19 @@ jobs:
             automated
             bump
 
+      - name: Auto-merge PR
+        if: steps.check.outputs.update-needed == 'true' && steps.create-pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ steps.create-pr.outputs.pull-request-number }}"
+          echo "Auto-merging PR #${PR_NUM}"
+          gh pr merge "$PR_NUM" --merge --auto
+
       - name: Summary
         run: |
           if [ "${{ steps.check.outputs.update-needed }}" == "true" ]; then
-            echo "Created PR for Zen Browser ${{ steps.check.outputs.version }}"
-            echo "Check: https://github.com/${{ github.repository }}/pulls"
+            echo "Created and auto-merged PR for Zen Browser ${{ steps.check.outputs.version }}"
           else
             echo "No update needed - already at latest version"
           fi

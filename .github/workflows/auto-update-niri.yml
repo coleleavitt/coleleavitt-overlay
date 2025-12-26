@@ -85,6 +85,16 @@ jobs:
           echo "Generated new ebuild for version ${NEW_VERSION}"
           echo "WARNING: Rust crate dependencies in Manifest still need: ebuild niri-${NEW_VERSION}.ebuild manifest"
 
+      - name: Close stale PRs for this package
+        if: steps.check.outputs.update-needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state open --json number,title --jq '.[] | select(.title | startswith("gui-wm/niri:")) | .number' | while read pr_num; do
+            echo "Closing stale PR #${pr_num}"
+            gh pr close "$pr_num" --comment "Superseded by newer version update"
+          done
+
       - name: Create Pull Request
         if: steps.check.outputs.update-needed == 'true'
         uses: peter-evans/create-pull-request@v7.0.5
