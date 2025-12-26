@@ -48,12 +48,15 @@ jobs:
           cd www-client/zen-browser-bin/
           VERSION=${{ steps.check.outputs.version }}
           
+          # Copy latest ebuild as template
           LATEST_EBUILD=$(ls zen-browser-bin-*.ebuild | sort -V | tail -1)
           cp "$LATEST_EBUILD" "zen-browser-bin-${VERSION}.ebuild"
 
+          # Download tarballs for checksums
           wget -q -O /tmp/amd64.tar.xz "https://github.com/zen-browser/desktop/releases/download/${VERSION}/zen.linux-x86_64.tar.xz"
           wget -q -O /tmp/arm64.tar.xz "https://github.com/zen-browser/desktop/releases/download/${VERSION}/zen.linux-aarch64.tar.xz"
 
+          # Calculate DIST checksums
           AMD64_SIZE=$(stat -c%s /tmp/amd64.tar.xz)
           AMD64_BLAKE2B=$(b2sum /tmp/amd64.tar.xz | awk '{print $1}')
           AMD64_SHA512=$(sha512sum /tmp/amd64.tar.xz | awk '{print $1}')
@@ -62,7 +65,14 @@ jobs:
           ARM64_BLAKE2B=$(b2sum /tmp/arm64.tar.xz | awk '{print $1}')
           ARM64_SHA512=$(sha512sum /tmp/arm64.tar.xz | awk '{print $1}')
 
+          # Calculate EBUILD checksum for the new ebuild file
+          EBUILD_SIZE=$(stat -c%s "zen-browser-bin-${VERSION}.ebuild")
+          EBUILD_BLAKE2B=$(b2sum "zen-browser-bin-${VERSION}.ebuild" | awk '{print $1}')
+          EBUILD_SHA512=$(sha512sum "zen-browser-bin-${VERSION}.ebuild" | awk '{print $1}')
+
+          # Append to Manifest (EBUILD first, then DIST entries)
           cat >> Manifest << EOF
+          EBUILD zen-browser-bin-${VERSION}.ebuild ${EBUILD_SIZE} BLAKE2B ${EBUILD_BLAKE2B} SHA512 ${EBUILD_SHA512}
           DIST zen-browser-bin-${VERSION}-x86_64.tar.xz ${AMD64_SIZE} BLAKE2B ${AMD64_BLAKE2B} SHA512 ${AMD64_SHA512}
           DIST zen-browser-bin-${VERSION}-aarch64.tar.xz ${ARM64_SIZE} BLAKE2B ${ARM64_BLAKE2B} SHA512 ${ARM64_SHA512}
           EOF
