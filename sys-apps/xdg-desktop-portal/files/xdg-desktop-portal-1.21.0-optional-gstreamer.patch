@@ -1,0 +1,66 @@
+https://bugs.gentoo.org/951611
+https://bugs.gentoo.org/951609
+https://github.com/flatpak/xdg-desktop-portal/issues/1650
+
+gstreamer is searched for unconditionally, but we don't have gstreamer-pbutils
+packaged yet, so that's a problem. Make it conditional for now (as it ought
+to be upstream either way if they're going to have an option for it).
+
+Updated for 1.21.0 from the 1.20.0 version of this patch.
+--- a/meson.build
++++ b/meson.build
+@@ -113,7 +113,7 @@
+ json_glib_dep = dependency('json-glib-1.0')
+ fuse3_dep = dependency('fuse3', version: '>= 3.10.0')
+ gdk_pixbuf_dep = dependency('gdk-pixbuf-2.0')
+-gst_pbutils_dep = dependency('gstreamer-pbutils-1.0')
++gst_pbutils_dep = dependency('gstreamer-pbutils-1.0', required: get_option('sandboxed-sound-validation'))
+ geoclue_dep = dependency(
+   'libgeoclue-2.0',
+   version: '>= 2.5.2',
+@@ -124,7 +124,8 @@
+ gudev_dep = dependency('gudev-1.0', required: get_option('gudev'))
+ umockdev_dep = dependency('umockdev-1.0', required: get_option('tests'))
+ 
+-gst_inspect = find_program('gst-inspect-1.0', required: false)
++gst_inspect = find_program('gst-inspect-1.0', required: get_option('sandboxed-sound-validation'))
++have_gst_inspect = gst_inspect.found()
+ if gst_inspect.found()
+   have_wav_parse = run_command(
+     gst_inspect, 'wavparse', '--exists',
+@@ -216,7 +217,7 @@
+   .require(python.found() and python.language_version().version_compare('>=3.9'),
+            error_message: 'Python version >=3.9 is required') \
+   .require(umockdev_dep.found()) \
+-  .require(have_wav_parse,
++  .require(not have_wav_parse and not get_option('sandboxed-sound-validation').allowed(),
+            error_message: 'gst-inspect and the wavparse plugins are required') \
+   .allowed()
+ 
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -214,14 +214,16 @@
+   validate_sound_c_args += '-DHELPER="@0@"'.format(bwrap.full_path())
+ endif
+ 
+-xdp_validate_sound = executable(
+-  'xdg-desktop-portal-validate-sound',
+-  'validate-sound.c',
+-  dependencies: [gst_pbutils_dep],
+-  c_args: validate_sound_c_args,
+-  install: true,
+-  install_dir: libexecdir,
+-)
++if gst_inspect.found()
++  xdp_validate_sound = executable(
++    'xdg-desktop-portal-validate-sound',
++    'validate-sound.c',
++    dependencies: [gst_pbutils_dep],
++    c_args: validate_sound_c_args,
++    install: true,
++    install_dir: libexecdir,
++  )
++endif
+ 
+ configure_file(
+   input: 'xdg-desktop-portal-rewrite-launchers.service.in',
