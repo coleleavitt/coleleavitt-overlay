@@ -51,13 +51,6 @@ if [ "${LLVM_ENABLED}" = "true" ] && [ -n "${LLVM_MAX}" ]; then
   fi
 fi
 
-# --- Compute EBUILD checksum ---
-EBUILD_SIZE=$(stat -c%s "${NEW_EBUILD}")
-EBUILD_BLAKE2B=$(b2sum "${NEW_EBUILD}" | awk '{print $1}')
-EBUILD_SHA512=$(sha512sum "${NEW_EBUILD}" | awk '{print $1}')
-
-echo "  EBUILD ${NEW_EBUILD} ${EBUILD_SIZE} bytes"
-
 # --- Download distfiles and compute DIST checksums ---
 rm -f /tmp/new_dist_lines.txt
 DOWNLOAD_COUNT=$(echo "${DOWNLOADS}" | jq -r 'length')
@@ -111,16 +104,39 @@ else
   fi
 fi
 
-# --- Update Manifest ---
-echo "  Updating Manifest"
+# --- Regenerate full Manifest from disk (like `ebuild manifest`) ---
+echo "  Regenerating Manifest"
+
+_checksum_file() {
+  local file="$1" type="$2" name="$3"
+  local size blake2b sha512
+  size=$(stat -c%s "$file")
+  blake2b=$(b2sum "$file" | awk '{print $1}')
+  sha512=$(sha512sum "$file" | awk '{print $1}')
+  echo "${type} ${name} ${size} BLAKE2B ${blake2b} SHA512 ${sha512}"
+}
 
 {
-  echo "EBUILD ${NEW_EBUILD} ${EBUILD_SIZE} BLAKE2B ${EBUILD_BLAKE2B} SHA512 ${EBUILD_SHA512}"
-  grep "^EBUILD" Manifest 2>/dev/null | grep -v "${NEW_EBUILD}" || true
+  # AUX: files in files/ directory
+  if [ -d files ]; then
+    for f in files/*; do
+      [ -f "$f" ] && _checksum_file "$f" "AUX" "$(basename "$f")"
+    done
+  fi
+
+  # DIST: new downloads + existing + gentoo extras
   cat /tmp/new_dist_lines.txt 2>/dev/null || true
   grep "^DIST" Manifest 2>/dev/null || true
-  grep "^MISC" Manifest 2>/dev/null || true
-  grep "^AUX" Manifest 2>/dev/null || true
+
+  # EBUILD: all .ebuild files in current directory
+  for f in *.ebuild; do
+    [ -f "$f" ] && _checksum_file "$f" "EBUILD" "$f"
+  done
+
+  # MISC: metadata.xml and other non-ebuild, non-Manifest files
+  for f in *.xml *.conf; do
+    [ -f "$f" ] && [ "$f" != "Manifest" ] && _checksum_file "$f" "MISC" "$f"
+  done
 } | sort -t' ' -k1,1 -k2,2V -u > Manifest.new
 
 mv Manifest.new Manifest
