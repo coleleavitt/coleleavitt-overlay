@@ -1,0 +1,91 @@
+# This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
+# your descriptions to your package's metadata.xml ONLY.
+# * generated automatically using egencache *
+
+app-emulation/looking-glass:binutils - build backtrace support
+app-emulation/looking-glass:pipewire - enable media-video/pipewire support
+app-emulation/qemu-stealth:accessibility - Adds support for braille displays using brltty
+app-emulation/qemu-stealth:aio - Enables support for Linux's Async IO
+app-emulation/qemu-stealth:alsa - Enable alsa output for sound emulation
+app-emulation/qemu-stealth:bpf - Enable eBPF support for RSS implementation.
+app-emulation/qemu-stealth:capstone - Enable disassembly support with dev-libs/capstone
+app-emulation/qemu-stealth:curl - Support ISOs / -cdrom directives via HTTP or HTTPS.
+app-emulation/qemu-stealth:fdt - Enables firmware device tree support
+app-emulation/qemu-stealth:fuse - Enables FUSE block device export
+app-emulation/qemu-stealth:glusterfs - Enables GlusterFS cluster fileystem via sys-cluster/glusterfs
+app-emulation/qemu-stealth:gnutls - Enable TLS support for the VNC console server. For 1.4 and newer this also enables WebSocket support. For 2.0 through 2.3 also enables disk quorum support.
+app-emulation/qemu-stealth:iscsi - Enable direct iSCSI support via net-libs/libiscsi instead of indirectly via the Linux block layer that sys-block/open-iscsi does.
+app-emulation/qemu-stealth:jpeg - Enable jpeg image support for the VNC console server
+app-emulation/qemu-stealth:keyutils - Support Linux keyrings via sys-apps/keyutils
+app-emulation/qemu-stealth:multipath - Enable multipath persistent reservation passthrough via sys-fs/multipath-tools.
+app-emulation/qemu-stealth:ncurses - Enable the ncurses-based console
+app-emulation/qemu-stealth:nfs - Enable NFS support
+app-emulation/qemu-stealth:numa - Enable NUMA support
+app-emulation/qemu-stealth:pin-upstream-blobs - Pin the versions of BIOS firmware to the version included in the upstream release. This is needed to sanely support migration/suspend/resume/snapshotting/etc... of instances. When the blobs are different, random corruption/bugs/crashes/etc... may be observed.
+app-emulation/qemu-stealth:pipewire - Enable pipewire output for sound emulation
+app-emulation/qemu-stealth:plugins - Enable qemu plugin API via shared library loading.
+app-emulation/qemu-stealth:png - Enable png image support for the VNC console server
+app-emulation/qemu-stealth:pulseaudio - Enable pulseaudio output for sound emulation
+app-emulation/qemu-stealth:rbd - Enable rados block device backend support, see https://docs.ceph.com/en/mimic/rbd/qemu-rbd/
+app-emulation/qemu-stealth:sdl - Enable the SDL-based console
+app-emulation/qemu-stealth:sdl-image - SDL Image support for icons
+app-emulation/qemu-stealth:slirp - Enable TCP/IP in hypervisor via net-libs/libslirp
+app-emulation/qemu-stealth:spice - Enable Spice protocol support via app-emulation/spice
+app-emulation/qemu-stealth:ssh - Enable SSH based block device support via net-libs/libssh2
+app-emulation/qemu-stealth:static - Build the User and Software MMU (system) targets as well as tools as static binaries
+app-emulation/qemu-stealth:static-user - Build the User targets as static binaries
+app-emulation/qemu-stealth:systemtap - Enable SystemTap/DTrace tracing
+app-emulation/qemu-stealth:usb - Enable USB passthrough via dev-libs/libusb
+app-emulation/qemu-stealth:usbredir - Use sys-apps/usbredir to redirect USB devices to another machine over TCP
+app-emulation/qemu-stealth:vde - Enable VDE-based networking
+app-emulation/qemu-stealth:vhost-net - Enable accelerated networking using vhost-net, see https://www.linux-kvm.org/page/VhostNet
+app-emulation/qemu-stealth:virgl - Enable experimental Virgil 3d (virtual software GPU)
+app-emulation/qemu-stealth:virtfs - Enable VirtFS via virtio-9p-pci / fsdev. See https://wiki.qemu.org/Documentation/9psetup
+app-emulation/qemu-stealth:vte - Enable terminal support (x11-libs/vte) in the GTK+ interface
+app-emulation/qemu-stealth:xattr - Add support for getting and setting POSIX extended attributes, through sys-apps/attr. Requisite for the virtfs backend.
+app-emulation/qemu-stealth:xdp - Enable support for XDP through net-libs/xdp-tools
+app-emulation/qemu-stealth:xen - Enables support for Xen backends
+dev-build/cmake:dap - Build debugger for CMake with Debug Adapter Protocol support via dev-cpp/cppdap
+dev-qt/qttools:assistant - Build Qt Assistant and the QtHelp module
+dev-qt/qttools:designer - Build Qt Designer
+dev-qt/qttools:distancefieldgenerator - Build Qt Distance Field Generator
+dev-qt/qttools:kmap2qmap - Build tool to generate keymaps for use on Embedded Linux
+dev-qt/qttools:linguist - Build Qt Linguist tools (GUI requires USE=widgets and USE=qml)
+dev-qt/qttools:pixeltool - Build Qt Pixeltool
+dev-qt/qttools:qdbus - Build the Qt D-Bus Interface (D-Bus Viewer requires USE=widgets)
+dev-qt/qttools:qdoc - Build Qt Documentation Generator
+dev-qt/qttools:qml - Build QML/QtQuick bindings and imports
+dev-qt/qttools:qmlls - Build the QtHelp plugin for the QML language server
+dev-qt/qttools:qtattributionsscanner - Build Qt Source Code Attribution Scanner
+dev-qt/qttools:qtdiag - Build Qt Diag
+dev-qt/qttools:qtplugininfo - Build Qt Plugin Info
+dev-qt/qttools:widgets - Enable QtWidgets support
+gui-apps/waybar:evdev - Enable libevdev support for evdev related features
+gui-apps/waybar:experimental - Enable experimental features, such as Bluetooth battery reporting
+gui-apps/waybar:libinput - Enable libinput support for libinput related features
+gui-apps/waybar:logind - Enable support for logind (bluetooth and idle inhibit)
+gui-apps/waybar:mpd - Enable support for the Music Player Daemon
+gui-apps/waybar:mpris - Enable support for mpris
+gui-apps/waybar:network - Enable libnl support for network related features
+gui-apps/waybar:pipewire - Enable support for pipewire
+gui-apps/waybar:pulseaudio - Enable support for volume control via PulseAudio
+gui-apps/waybar:sndio - Enable support for volume control via sndio
+gui-apps/waybar:tray - Enable support for tray
+gui-apps/waybar:wifi - Enable support for wifi/rfkill
+media-libs/mesa:d3d9 - Enable Direct 3D9 API through Nine state tracker. Can be used together with patched wine.
+media-libs/mesa:llvm - Enable LLVM backend for Gallium3D.
+media-libs/mesa:lm-sensors - Enable Gallium HUD lm-sensors support.
+media-libs/mesa:opencl - Enable the Rusticl Gallium OpenCL state tracker.
+media-libs/mesa:osmesa - Build the Mesa library for off-screen rendering.
+media-libs/mesa:proprietary-codecs - Enable codecs for patent-encumbered audio and video formats.
+media-libs/mesa:sysprof - Enable profiling data capture support using dev-util/sysprof-capture
+media-libs/mesa:vdpau - Enable the VDPAU acceleration interface for the Gallium3D Video Layer.
+media-libs/mesa:vulkan-overlay - Build vulkan-overlay-layer which displays Frames Per Second and other statistics
+media-libs/mesa:wayland - Enable support for dev-libs/wayland
+media-libs/mesa:xa - Enable the XA (X Acceleration) API for Gallium3D.
+www-client/zen-browser-bin:X - Enable X11 support
+x11-drivers/nvidia-drivers:kernel-open - Use the open source variant of the drivers (only usable with Turing/Ampere or newer GPUs, aka GTX 1650+ -- note 50xx Blackwell or newer cards *require* this)
+x11-drivers/nvidia-drivers:persistenced - Install the persistence daemon for keeping devices state when unused (e.g. for headless)
+x11-drivers/nvidia-drivers:powerd - Install the NVIDIA dynamic boost support daemon (only useful with specific laptops, ignore if unsure)
+x11-drivers/nvidia-drivers:static-libs - Install the XNVCtrl static library for accessing sensors and other features
+x11-drivers/nvidia-drivers:tools - Install additional tools such as nvidia-settings

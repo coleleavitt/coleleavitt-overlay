@@ -1,0 +1,15 @@
+BDEPEND=|| ( dev-lang/python:3.13 dev-lang/python:3.12 ) >=sys-power/iasl-20160729 >=dev-lang/nasm-2.0.7 app-emulation/qemu dev-vcs/git >=dev-vcs/git-1.8.2.1[curl]
+DEFINED_PHASES=compile install postinst prepare setup unpack
+DESCRIPTION=Custom TianoCore EDK II UEFI firmware for virtual machines
+EAPI=8
+HOMEPAGE=https://github.com/coleleavitt/edk2
+INHERIT=git-r3 python-any-r1 toolchain-funcs
+IUSE=+secureboot
+KEYWORDS=~amd64
+LICENSE=BSD-2 MIT
+PROPERTIES=live
+RDEPEND=!sys-firmware/edk2-bin !sys-firmware/edk2-stealth
+SLOT=0
+SRC_URI=https://github.com/google/brotli/archive/f4153a09f87cbb9c826d8fc12c74642bb2d879ea.tar.gz -> brotli-f4153a09f87cbb9c826d8fc12c74642bb2d879ea.tar.gz https://github.com/openssl/openssl/releases/download/openssl-3.4.1/openssl-3.4.1.tar.gz https://github.com/MIPI-Alliance/public-mipi-sys-t/archive/370b5944c046bab043dd8b133727b2135af7747a.tar.gz -> mipi-sys-t-370b5944c046bab043dd8b133727b2135af7747a.tar.gz https://github.com/Mbed-TLS/mbedtls/archive/8c89224991adff88d53cd380f42a2baa36f91454.tar.gz -> mbedtls-8c89224991adff88d53cd380f42a2baa36f91454.tar.gz https://github.com/DMTF/libspdm/archive/98ef964e1e9a0c39c7efb67143d3a13a819432e0.tar.gz -> libspdm-98ef964e1e9a0c39c7efb67143d3a13a819432e0.tar.gz
+_eclasses_=eapi9-pipestatus	d2c134036ac31c3085aebc9147f572bd	git-r3	7b584b5dc33e3bc66ff5b9271bf41764	multiprocessing	45d0620f25c2f063ad6276ecd9ed9399	python-any-r1	891415dfe39ad9b41b461f2b86354af0	python-utils-r1	9c4180f103a0e8340bc993fc85dbdadd	toolchain-funcs	5195689ff6a73b0e789acfa09d4fbcb9
+_md5_=84fe73f09c805d0cc5cb295e0de4cdcc

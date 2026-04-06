@@ -1,0 +1,10 @@
+DEFINED_PHASES=install postinst
+DESCRIPTION=SurrealDB CLI - A scalable, distributed, document-graph database
+EAPI=8
+HOMEPAGE=https://surrealdb.com https://github.com/surrealdb/surrealdb
+KEYWORDS=~amd64 ~arm64
+LICENSE=BSL-1.1
+RESTRICT=strip
+SLOT=0
+SRC_URI=amd64? ( https://github.com/surrealdb/surrealdb/releases/download/v2.3.10/surreal-v2.3.10.linux-amd64.tgz ) arm64? ( https://github.com/surrealdb/surrealdb/releases/download/v2.3.10/surreal-v2.3.10.linux-arm64.tgz )
+_md5_=2435bf203d6f6ebdedb5492a442d2960

@@ -49,7 +49,7 @@ CRATES="
 	wit-bindgen@0.45.1
 "
 
-RUST_MIN_VER=1.96.0
+RUST_MIN_VER=1.95.0
 
 declare -A GIT_CRATES=(
 	[boringtun]='https://github.com/cloudflare/boringtun;2f3c85f5c4a601018c10b464b1ca890d9504bf6e;boringtun-%commit%/boringtun'
