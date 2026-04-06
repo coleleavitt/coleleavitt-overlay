@@ -20,6 +20,7 @@ on:
           - qttools
           - bpf-linker
           - cmake
+          - spirv-llvm-translator
         default: all
       version:
         description: 'Version override (empty = detect latest)'
@@ -179,6 +180,17 @@ jobs:
             llvm_min: ''
             llvm_style: ''
 
+          # ── spirv-llvm-translator ──
+          - package: spirv-llvm-translator
+            category: dev-util
+            pkg_name: spirv-llvm-translator
+            check_type: spirv_per_slot
+            check_repo: KhronosGroup/SPIRV-LLVM-Translator
+            downloads: '[]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
     # Skip matrix entries not matching manual dispatch selection
     if: >-
       github.event_name == 'schedule' ||
@@ -238,31 +250,52 @@ jobs:
                   head -1)
                 LATEST="${TAG#"${TAG_PREFIX}"}"
                 ;;
+              spirv_per_slot)
+                UPDATES=""
+                ALL_TAGS=$(curl -s "https://api.github.com/repos/${CHECK_REPO}/tags?per_page=100" | jq -r '.[].name')
+                for SLOT in $(seq 18 30); do
+                  UPSTREAM=$(echo "$ALL_TAGS" | grep -E "^v${SLOT}\." | sort -V | tail -1 | sed 's/^v//')
+                  [ -z "$UPSTREAM" ] && continue
+                  CURRENT=$(ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}-${SLOT}."*.ebuild 2>/dev/null | \
+                    sed -n "s/.*${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p" | sort -V | tail -1)
+                  if [ "$UPSTREAM" != "$CURRENT" ] && [ -n "$CURRENT" ]; then
+                    UPDATES="${UPDATES}${SLOT}:${CURRENT}:${UPSTREAM} "
+                  fi
+                done
+                if [ -n "$UPDATES" ]; then
+                  echo "spirv_updates=${UPDATES}" >> $GITHUB_OUTPUT
+                  echo "update-needed=true" >> $GITHUB_OUTPUT
+                  echo "Slots to update: $UPDATES"
+                else
+                  echo "update-needed=false" >> $GITHUB_OUTPUT
+                fi
+                ;;
             esac
 
-            # Get current version from overlay
-            if ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}"-*.ebuild 1>/dev/null 2>&1; then
-              CURRENT=$(ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}"-*.ebuild | \
-                sed -n "s/.*${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p" | \
-                sort -V | tail -1)
-            else
-              CURRENT=""
-            fi
+            if [ "$CHECK_TYPE" != "spirv_per_slot" ]; then
+              if ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}"-*.ebuild 1>/dev/null 2>&1; then
+                CURRENT=$(ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}"-*.ebuild | \
+                  sed -n "s/.*${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p" | \
+                  sort -V | tail -1)
+              else
+                CURRENT=""
+              fi
 
-            echo "Latest: $LATEST, Current: $CURRENT"
-            echo "current=${CURRENT}" >> $GITHUB_OUTPUT
+              echo "Latest: $LATEST, Current: $CURRENT"
+              echo "current=${CURRENT}" >> $GITHUB_OUTPUT
 
-            if [ "$LATEST" != "$CURRENT" ] && [ -n "$LATEST" ] && [ "$LATEST" != "null" ]; then
-              echo "version=${LATEST}" >> $GITHUB_OUTPUT
-              echo "update-needed=true" >> $GITHUB_OUTPUT
-            else
-              echo "update-needed=false" >> $GITHUB_OUTPUT
+              if [ "$LATEST" != "$CURRENT" ] && [ -n "$LATEST" ] && [ "$LATEST" != "null" ]; then
+                echo "version=${LATEST}" >> $GITHUB_OUTPUT
+                echo "update-needed=true" >> $GITHUB_OUTPUT
+              else
+                echo "update-needed=false" >> $GITHUB_OUTPUT
+              fi
             fi
           fi
 
-      # ── Bump ebuild using shared script ──
+      # ── Bump ebuild using shared script (standard packages) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
-        if: steps.check.outputs.update-needed == 'true'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -275,16 +308,64 @@ jobs:
           LLVM_STYLE: ${{ matrix.llvm_style }}
         run: bash .github/scripts/bump-package.sh
 
+      # ── Bump spirv-llvm-translator per LLVM slot ──
+      - name: Bump spirv-llvm-translator per slot
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'spirv_per_slot'
+        env:
+          SPIRV_UPDATES: ${{ steps.check.outputs.spirv_updates }}
+        run: |
+          cd dev-util/spirv-llvm-translator
+          for entry in $SPIRV_UPDATES; do
+            SLOT=$(echo "$entry" | cut -d: -f1)
+            CURRENT=$(echo "$entry" | cut -d: -f2)
+            VERSION=$(echo "$entry" | cut -d: -f3)
+            echo "=== Bumping slot ${SLOT}: ${CURRENT} -> ${VERSION} ==="
+
+            TEMPLATE=$(ls spirv-llvm-translator-${CURRENT}*.ebuild 2>/dev/null | sort -V | tail -1)
+            [ -z "$TEMPLATE" ] && continue
+            NEW="spirv-llvm-translator-${VERSION}.ebuild"
+            cp "$TEMPLATE" "$NEW"
+
+            wget -q -O "/tmp/spirv-${VERSION}.tar.gz" \
+              "https://github.com/KhronosGroup/SPIRV-LLVM-Translator/archive/refs/tags/v${VERSION}.tar.gz"
+
+            SIZE=$(stat -c%s "/tmp/spirv-${VERSION}.tar.gz")
+            BLAKE2B=$(b2sum "/tmp/spirv-${VERSION}.tar.gz" | awk '{print $1}')
+            SHA512=$(sha512sum "/tmp/spirv-${VERSION}.tar.gz" | awk '{print $1}')
+
+            EBUILD_SIZE=$(stat -c%s "$NEW")
+            EBUILD_B2=$(b2sum "$NEW" | awk '{print $1}')
+            EBUILD_SHA=$(sha512sum "$NEW" | awk '{print $1}')
+
+            {
+              echo "EBUILD ${NEW} ${EBUILD_SIZE} BLAKE2B ${EBUILD_B2} SHA512 ${EBUILD_SHA}"
+              grep "^EBUILD" Manifest | grep -v "$NEW" || true
+              echo "DIST SPIRV-LLVM-Translator-${VERSION}.tar.gz ${SIZE} BLAKE2B ${BLAKE2B} SHA512 ${SHA512}"
+              grep "^DIST" Manifest || true
+              grep "^MISC" Manifest || true
+              grep "^AUX" Manifest || true
+            } | sort -t' ' -k1,1 -k2,2V -u > Manifest.new
+            mv Manifest.new Manifest
+            rm -f "/tmp/spirv-${VERSION}.tar.gz"
+          done
+
       # ── Commit and push ──
       - name: Commit and push
         if: steps.check.outputs.update-needed == 'true'
         env:
           VERSION: ${{ steps.check.outputs.version }}
+          SPIRV_UPDATES: ${{ steps.check.outputs.spirv_updates }}
           PKG: ${{ matrix.category }}/${{ matrix.pkg_name }}
+          CHECK_TYPE: ${{ matrix.check_type }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "${PKG}: bump to ${VERSION}"
+          if [ "$CHECK_TYPE" = "spirv_per_slot" ]; then
+            SLOTS=$(echo "$SPIRV_UPDATES" | tr ' ' '\n' | cut -d: -f3 | tr '\n' ',' | sed 's/,$//')
+            git commit -m "${PKG}: bump slots to ${SLOTS}"
+          else
+            git commit -m "${PKG}: bump to ${VERSION}"
+          fi
           git pull --rebase origin master
           git push
