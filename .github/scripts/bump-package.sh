@@ -13,13 +13,14 @@
 set -euo pipefail
 
 PKG_DIR="${PKG_CATEGORY}/${PKG_NAME}"
+GENTOO_MANIFEST="/var/db/repos/gentoo/${PKG_DIR}/Manifest"
+GENTOO_CI_MANIFEST=""
 
 echo "=== Bumping ${PKG_DIR} from ${CURRENT} to ${VERSION} ==="
 
 cd "${PKG_DIR}"
 
 # --- Find template ebuild ---
-# Prefer current version, fall back to latest
 TEMPLATE=""
 for pattern in "${PKG_NAME}-${CURRENT}.ebuild" "${PKG_NAME}-${CURRENT}-r"*.ebuild; do
   if compgen -G "$pattern" >/dev/null 2>&1; then
@@ -43,11 +44,9 @@ cp "${TEMPLATE}" "${NEW_EBUILD}"
 if [ "${LLVM_ENABLED}" = "true" ] && [ -n "${LLVM_MAX}" ]; then
   echo "  Updating LLVM_COMPAT (max=${LLVM_MAX}, min=${LLVM_MIN:-18}, style=${LLVM_STYLE:-range})"
   if [ "${LLVM_STYLE}" = "list" ]; then
-    # Explicit list: LLVM_COMPAT=( 17 18 19 20 21 22 )
     LIST=$(seq "${LLVM_MIN:-17}" "${LLVM_MAX}" | tr '\n' ' ' | sed 's/ *$//')
     sed -i "s/LLVM_COMPAT=( [0-9 ]* )/LLVM_COMPAT=( ${LIST} )/" "${NEW_EBUILD}"
   else
-    # Range: LLVM_COMPAT=( {18..22} )
     sed -i "s/LLVM_COMPAT=( {[0-9]*\.\.[0-9]*} )/LLVM_COMPAT=( {${LLVM_MIN:-18}..${LLVM_MAX}} )/" "${NEW_EBUILD}"
   fi
 fi
@@ -78,22 +77,49 @@ for i in $(seq 0 $((DOWNLOAD_COUNT - 1))); do
   rm -f "/tmp/${FILENAME}"
 done
 
+# --- Pull extra DIST entries from gentoo Manifest ---
+# Packages like cmake reference additional distfiles (docs, signatures)
+# that we don't download ourselves. Pull their checksums from gentoo.
+if [ -f "$GENTOO_MANIFEST" ]; then
+  echo "  Checking gentoo Manifest for extra distfiles"
+  grep "^DIST" "$GENTOO_MANIFEST" 2>/dev/null | while read -r line; do
+    DIST_NAME=$(echo "$line" | awk '{print $2}')
+    # Skip if we already have this entry from our downloads
+    if ! grep -q "$DIST_NAME" /tmp/new_dist_lines.txt 2>/dev/null; then
+      # Skip if already in our existing Manifest
+      if ! grep -q "$DIST_NAME" Manifest 2>/dev/null; then
+        echo "  Pulling from gentoo: ${DIST_NAME}"
+        echo "$line" >> /tmp/new_dist_lines.txt
+      fi
+    fi
+  done
+else
+  # In CI, gentoo repo is synced by pkgcheck-action but not by auto-update.
+  # Try fetching the Manifest directly from GitHub.
+  GENTOO_CI_MANIFEST=$(curl -sL "https://raw.githubusercontent.com/gentoo-mirror/gentoo/master/${PKG_DIR}/Manifest" 2>/dev/null || true)
+  if [ -n "$GENTOO_CI_MANIFEST" ]; then
+    echo "  Checking gentoo Manifest (from GitHub) for extra distfiles"
+    echo "$GENTOO_CI_MANIFEST" | grep "^DIST" | while read -r line; do
+      DIST_NAME=$(echo "$line" | awk '{print $2}')
+      if ! grep -q "$DIST_NAME" /tmp/new_dist_lines.txt 2>/dev/null; then
+        if ! grep -q "$DIST_NAME" Manifest 2>/dev/null; then
+          echo "  Pulling from gentoo: ${DIST_NAME}"
+          echo "$line" >> /tmp/new_dist_lines.txt
+        fi
+      fi
+    done
+  fi
+fi
+
 # --- Update Manifest ---
 echo "  Updating Manifest"
 
-# Build new Manifest: keep existing entries, add new ones
 {
-  # New EBUILD entry
   echo "EBUILD ${NEW_EBUILD} ${EBUILD_SIZE} BLAKE2B ${EBUILD_BLAKE2B} SHA512 ${EBUILD_SHA512}"
-  # Existing EBUILD entries (excluding new version if re-running)
   grep "^EBUILD" Manifest 2>/dev/null | grep -v "${NEW_EBUILD}" || true
-  # New DIST entries
   cat /tmp/new_dist_lines.txt 2>/dev/null || true
-  # Existing DIST entries (keep all — dedup handles overlaps)
   grep "^DIST" Manifest 2>/dev/null || true
-  # MISC entries (metadata.xml etc)
   grep "^MISC" Manifest 2>/dev/null || true
-  # AUX entries (patches etc)
   grep "^AUX" Manifest 2>/dev/null || true
 } | sort -t' ' -k1,1 -k2,2V -u > Manifest.new
 
