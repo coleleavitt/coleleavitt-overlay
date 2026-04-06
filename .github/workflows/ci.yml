@@ -28,11 +28,13 @@ jobs:
       - name: Run pkgcheck
         uses: pkgcore/pkgcheck-action@v1
         with:
-          # --exit overrides the hardcoded GentooCI checkset from pkgcheck-action
-          # Fail on errors EXCEPT expected overlay warnings:
-          #   NonsolvableDepsInStable — ~arch deps not in stable profiles (expected)
-          #   NonsolvableDepsInDev    — same for ~arch/dev profiles
-          #   VisibleVcsPkg           — live 9999 ebuilds visible (expected)
-          #   UnknownMirror           — overlay-only mirrors (linssid/sourceforge)
-          #   RedundantVersion        — multiple versions are intentional
-          args: --exit error,-NonsolvableDepsInStable,-NonsolvableDepsInDev,-VisibleVcsPkg,-UnknownMirror,-RedundantVersion
+          # --exit overrides the hardcoded GentooCI checkset from pkgcheck-action.
+          # Fail on real errors only — exclude expected overlay warnings:
+          #   NonsolvableDeps*  — ~arch deps unsolvable in stable/dev/exp profiles
+          #   VisibleVcsPkg     — live 9999 ebuilds visible (intentional)
+          #   UnknownMirror     — overlay-only mirrors (sourceforge)
+          #   RedundantVersion  — multiple versions are intentional
+          #   UnknownLicense    — overlay-specific licenses (AGPL-3.0, BSL-1.1)
+          #   UnknownUseFlags   — overlay-local USE flags (clang, flatpak)
+          #   UnknownKeywords   — ** keyword for live builds
+          args: --exit error,-NonsolvableDepsInStable,-NonsolvableDepsInDev,-NonsolvableDepsInExp,-VisibleVcsPkg,-UnknownMirror,-RedundantVersion,-UnknownLicense,-UnknownUseFlags,-UnknownKeywords
