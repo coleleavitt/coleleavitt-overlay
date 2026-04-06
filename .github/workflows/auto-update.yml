@@ -15,6 +15,8 @@ on:
           - spidermonkey
           - vesktop-bin
           - zen-browser-bin
+          - uefitool
+          - uutils-coreutils
         default: all
       version:
         description: 'Version override (empty = detect latest)'
@@ -114,6 +116,30 @@ jobs:
             llvm_min: ''
             llvm_style: ''
 
+          # ── uefitool ──
+          - package: uefitool
+            category: sys-firmware
+            pkg_name: uefitool
+            check_type: github_tag
+            check_repo: LongSoft/UEFITool
+            tag_prefix: A
+            downloads: '[{"url":"https://github.com/LongSoft/UEFITool/archive/refs/tags/A{VERSION}.tar.gz","filename":"uefitool-{VERSION}.tar.gz"}]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
+          # ── uutils-coreutils ──
+          - package: uutils-coreutils
+            category: sys-apps
+            pkg_name: uutils-coreutils
+            check_type: github
+            check_repo: uutils/coreutils
+            strip_v: false
+            downloads: '[{"url":"https://github.com/uutils/coreutils/archive/refs/tags/{VERSION}.tar.gz","filename":"uutils-coreutils-{VERSION}.tar.gz"}]'
+            llvm_enabled: true
+            llvm_min: 17
+            llvm_style: range
+
     # Skip matrix entries not matching manual dispatch selection
     if: >-
       github.event_name == 'schedule' ||
@@ -140,6 +166,7 @@ jobs:
           CHECK_REGEX: ${{ matrix.check_regex }}
           CHECK_REPO: ${{ matrix.check_repo }}
           STRIP_V: ${{ matrix.strip_v }}
+          TAG_PREFIX: ${{ matrix.tag_prefix }}
           CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
           OVERRIDE: ${{ github.event.inputs.version }}
@@ -164,6 +191,10 @@ jobs:
               mozilla_esr)
                 LATEST=$(curl -s "https://product-details.mozilla.org/1.0/firefox_versions.json" | \
                   jq -r '.FIREFOX_ESR' | sed 's/esr$//')
+                ;;
+              github_tag)
+                TAG=$(curl -s "https://api.github.com/repos/${CHECK_REPO}/tags?per_page=1" | jq -r '.[0].name')
+                LATEST="${TAG#"${TAG_PREFIX}"}"
                 ;;
             esac
 
