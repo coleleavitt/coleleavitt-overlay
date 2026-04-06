@@ -51,6 +51,53 @@ if [ "${LLVM_ENABLED}" = "true" ] && [ -n "${LLVM_MAX}" ]; then
   fi
 fi
 
+# --- Update Rust stdlib CRATES if needed ---
+# For packages using -Z build-std (e.g. mitmproxy-linux), the CRATES list
+# must match the installed Rust nightly's stdlib Cargo.lock.
+if [ "${RUST_SYSROOT_CRATES}" = "true" ]; then
+  echo "  Updating CRATES from Rust stdlib Cargo.lock"
+
+  CARGO_LOCK=""
+  # Try local rustup first
+  RUSTUP_LOCK="$HOME/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/Cargo.lock"
+  if [ -f "$RUSTUP_LOCK" ]; then
+    CARGO_LOCK="$RUSTUP_LOCK"
+    echo "  Source: local rustup nightly"
+  else
+    # Fetch from rust-lang/rust main branch
+    echo "  Source: rust-lang/rust GitHub (main branch)"
+    curl -sL "https://raw.githubusercontent.com/rust-lang/rust/master/library/Cargo.lock" > /tmp/rust-stdlib-cargo.lock
+    CARGO_LOCK="/tmp/rust-stdlib-cargo.lock"
+  fi
+
+  if [ -n "$CARGO_LOCK" ] && [ -s "$CARGO_LOCK" ]; then
+    # Extract registry crates (skip path dependencies like std, core, alloc)
+    NEW_CRATES=$(awk '/^\[\[package\]\]/{name=""; ver=""; src=""} /^name/{gsub(/.*= "/,""); gsub(/"/,""); name=$0} /^version/{gsub(/.*= "/,""); gsub(/"/,""); ver=$0} /^source.*registry/{src="yes"} /^\[/{if(name!="" && ver!="" && src=="yes") printf "\t%s@%s\n", name, ver; name=""; ver=""; src=""}' "$CARGO_LOCK" | sort -u)
+
+    # Replace CRATES block in ebuild
+    # Match from CRATES=" to the closing "
+    python3 -c "
+import re, sys
+ebuild = open('${NEW_EBUILD}').read()
+new_crates = '''${NEW_CRATES}'''
+pattern = r'CRATES=\"\n.*?\"'
+replacement = 'CRATES=\"\n' + new_crates + '\n\"'
+result = re.sub(pattern, replacement, ebuild, flags=re.DOTALL)
+open('${NEW_EBUILD}', 'w').write(result)
+"
+    echo "  Updated CRATES with $(echo "$NEW_CRATES" | wc -l) crates"
+
+    # Update RUST_MIN_VER to match current nightly
+    RUST_VER=$(rustc --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+    if [ -n "$RUST_VER" ]; then
+      sed -i "s/^RUST_MIN_VER=.*/RUST_MIN_VER=${RUST_VER}/" "${NEW_EBUILD}"
+      sed -i '/^RUST_MAX_VER=/d' "${NEW_EBUILD}"
+      echo "  Set RUST_MIN_VER=${RUST_VER}, removed RUST_MAX_VER cap"
+    fi
+  fi
+  rm -f /tmp/rust-stdlib-cargo.lock
+fi
+
 # --- Download distfiles and compute DIST checksums ---
 rm -f /tmp/new_dist_lines.txt
 DOWNLOAD_COUNT=$(echo "${DOWNLOADS}" | jq -r 'length')
