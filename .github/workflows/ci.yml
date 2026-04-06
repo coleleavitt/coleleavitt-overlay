@@ -8,55 +8,24 @@ on:
 jobs:
   pkgcheck:
     runs-on: ubuntu-latest
-    container:
-      image: gentoo/stage3:latest
     steps:
-      - uses: actions/checkout@v4.2.2
+      - name: Track previous run status
+        id: prev
+        run: |
+          LAST=$(gh run list -R $GITHUB_REPOSITORY \
+            --workflow=ci.yml --status=completed \
+            --json=event,conclusion \
+            --jq='first(.[] | select(.event != "pull_request")).conclusion' 2>/dev/null || echo "unknown")
+          echo "status=${LAST}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache Portage tree and distfiles
-        uses: actions/cache@v4
+      - name: Checkout overlay
+        uses: actions/checkout@v4.2.2
         with:
-          path: |
-            /var/db/repos/gentoo
-            /var/cache/distfiles
-          key: gentoo-tree-${{ runner.os }}-${{ hashFiles('**/ci.yml') }}
-          restore-keys: |
-            gentoo-tree-${{ runner.os }}-
-
-      - name: Cache built QA tools
-        id: cache-qa
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/binpkgs
-          key: gentoo-qa-binpkgs-${{ runner.os }}-v1
-          restore-keys: |
-            gentoo-qa-binpkgs-${{ runner.os }}-
-
-      - name: Update Portage
-        run: |
-          emerge-webrsync
-
-      - name: Enable binary package building
-        run: |
-          echo 'FEATURES="${FEATURES} buildpkg"' >> /etc/portage/make.conf
-          mkdir -p /var/cache/binpkgs
-
-      - name: Install QA tools
-        run: |
-          # Use cached binary packages if available, otherwise build from source
-          if ls /var/cache/binpkgs/*.gpkg.tar >/dev/null 2>&1; then
-            echo "Found cached binary packages, attempting to use them"
-            emerge -q --usepkg dev-util/pkgcheck dev-util/pkgdev || emerge -q dev-util/pkgcheck dev-util/pkgdev
-          else
-            echo "No cached packages found, building from source"
-            emerge -q dev-util/pkgcheck dev-util/pkgdev
-          fi
+          fetch-depth: 1
 
       - name: Run pkgcheck
-        run: |
-          # Run pkgcheck but only report, don't fail
-          pkgcheck scan --net || true
-
-          echo ""
-          echo "QA check completed. Review warnings above."
-          echo "To see only errors: pkgcheck scan --exit error"
+        uses: pkgcore/pkgcheck-action@v1
+        with:
+          args: --keywords=-RedundantVersion,-NonsolvableDepsInDev

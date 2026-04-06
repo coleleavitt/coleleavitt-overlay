@@ -1,0 +1,217 @@
+name: Auto-update packages
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to update'
+        type: choice
+        options:
+          - all
+          - mesa
+          - mesa_clc
+          - spidermonkey
+          - vesktop-bin
+          - zen-browser-bin
+        default: all
+      version:
+        description: 'Version override (empty = detect latest)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Phase 1: Detect upstream LLVM (shared by all LLVM-dependent packages)
+  # ──────────────────────────────────────────────
+  detect-llvm:
+    runs-on: ubuntu-latest
+    outputs:
+      llvm_max: ${{ steps.llvm.outputs.llvm_max }}
+    steps:
+      - name: Query LLVM upstream for latest stable major
+        id: llvm
+        run: |
+          LLVM_MAX=$(curl -s "https://api.github.com/repos/llvm/llvm-project/tags?per_page=50" | \
+            jq -r '.[].name' | \
+            grep -oP '^llvmorg-\K[0-9]+(?=\.[0-9]+\.[0-9]+$)' | \
+            sort -n -u | tail -1)
+          if [ -z "$LLVM_MAX" ] || [ "$LLVM_MAX" -lt 18 ]; then
+            LLVM_MAX=22
+          fi
+          echo "llvm_max=${LLVM_MAX}" >> $GITHUB_OUTPUT
+          echo "Upstream LLVM max stable: ${LLVM_MAX}"
+
+  # ──────────────────────────────────────────────
+  # Phase 2: Matrix update — one job per package, serialized pushes
+  # ──────────────────────────────────────────────
+  update:
+    needs: detect-llvm
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          # ── mesa ──
+          - package: mesa
+            category: media-libs
+            pkg_name: mesa
+            check_type: archive
+            check_url: https://archive.mesa3d.org/
+            check_regex: 'mesa-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.xz'
+            downloads: '[{"url":"https://archive.mesa3d.org/mesa-{VERSION}.tar.xz","filename":"mesa-{VERSION}.tar.xz"}]'
+            llvm_enabled: true
+            llvm_min: 18
+            llvm_style: range
+
+          # ── mesa_clc ──
+          - package: mesa_clc
+            category: dev-util
+            pkg_name: mesa_clc
+            check_type: archive
+            check_url: https://archive.mesa3d.org/
+            check_regex: 'mesa-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.xz'
+            downloads: '[{"url":"https://archive.mesa3d.org/mesa-{VERSION}.tar.xz","filename":"mesa-{VERSION}.tar.xz"}]'
+            llvm_enabled: true
+            llvm_min: 18
+            llvm_style: range
+
+          # ── spidermonkey ──
+          - package: spidermonkey
+            category: dev-lang
+            pkg_name: spidermonkey
+            check_type: mozilla_esr
+            downloads: '[{"url":"https://archive.mozilla.org/pub/firefox/releases/{VERSION}esr/source/firefox-{VERSION}esr.source.tar.xz","filename":"firefox-{VERSION}esr.source.tar.xz"}]'
+            llvm_enabled: true
+            llvm_min: 17
+            llvm_style: list
+
+          # ── vesktop-bin ──
+          - package: vesktop-bin
+            category: net-im
+            pkg_name: vesktop-bin
+            check_type: github
+            check_repo: Vencord/Vesktop
+            strip_v: true
+            downloads: '[{"url":"https://github.com/Vencord/Vesktop/releases/download/v{VERSION}/vesktop-{VERSION}.tar.gz","filename":"vesktop-{VERSION}.tar.gz"},{"url":"https://github.com/Vencord/Vesktop/releases/download/v{VERSION}/vesktop-{VERSION}-arm64.tar.gz","filename":"vesktop-{VERSION}-arm64.tar.gz"}]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
+          # ── zen-browser-bin ──
+          - package: zen-browser-bin
+            category: www-client
+            pkg_name: zen-browser-bin
+            check_type: github
+            check_repo: zen-browser/desktop
+            strip_v: false
+            downloads: '[{"url":"https://github.com/zen-browser/desktop/releases/download/{VERSION}/zen.linux-x86_64.tar.xz","filename":"zen-browser-bin-{VERSION}-x86_64.tar.xz"},{"url":"https://github.com/zen-browser/desktop/releases/download/{VERSION}/zen.linux-aarch64.tar.xz","filename":"zen-browser-bin-{VERSION}-aarch64.tar.xz"}]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
+    # Skip matrix entries not matching manual dispatch selection
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.package == 'all' ||
+      github.event.inputs.package == matrix.package
+
+    concurrency:
+      group: overlay-push
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout overlay
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Version detection (branched by check_type) ──
+      - name: Detect latest version
+        id: check
+        env:
+          CHECK_TYPE: ${{ matrix.check_type }}
+          CHECK_URL: ${{ matrix.check_url }}
+          CHECK_REGEX: ${{ matrix.check_regex }}
+          CHECK_REPO: ${{ matrix.check_repo }}
+          STRIP_V: ${{ matrix.strip_v }}
+          CATEGORY: ${{ matrix.category }}
+          PKG_NAME: ${{ matrix.pkg_name }}
+          OVERRIDE: ${{ github.event.inputs.version }}
+        run: |
+          # Manual version override
+          if [ -n "$OVERRIDE" ]; then
+            echo "version=${OVERRIDE}" >> $GITHUB_OUTPUT
+            echo "update-needed=true" >> $GITHUB_OUTPUT
+          else
+            case "$CHECK_TYPE" in
+              archive)
+                LATEST=$(curl -sL "$CHECK_URL" | grep -oP "$CHECK_REGEX" | sort -V | tail -1)
+                ;;
+              github)
+                TAG=$(curl -s "https://api.github.com/repos/${CHECK_REPO}/releases/latest" | jq -r .tag_name)
+                if [ "$STRIP_V" = "true" ]; then
+                  LATEST=$(echo "$TAG" | sed 's/^v//')
+                else
+                  LATEST="$TAG"
+                fi
+                ;;
+              mozilla_esr)
+                LATEST=$(curl -s "https://product-details.mozilla.org/1.0/firefox_versions.json" | \
+                  jq -r '.FIREFOX_ESR' | sed 's/esr$//')
+                ;;
+            esac
+
+            # Get current version from overlay
+            if ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}"-*.ebuild 1>/dev/null 2>&1; then
+              CURRENT=$(ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}"-*.ebuild | \
+                sed -n "s/.*${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p" | \
+                sort -V | tail -1)
+            else
+              CURRENT=""
+            fi
+
+            echo "Latest: $LATEST, Current: $CURRENT"
+            echo "current=${CURRENT}" >> $GITHUB_OUTPUT
+
+            if [ "$LATEST" != "$CURRENT" ] && [ -n "$LATEST" ] && [ "$LATEST" != "null" ]; then
+              echo "version=${LATEST}" >> $GITHUB_OUTPUT
+              echo "update-needed=true" >> $GITHUB_OUTPUT
+            else
+              echo "update-needed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      # ── Bump ebuild using shared script ──
+      - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
+        if: steps.check.outputs.update-needed == 'true'
+        env:
+          PKG_CATEGORY: ${{ matrix.category }}
+          PKG_NAME: ${{ matrix.pkg_name }}
+          VERSION: ${{ steps.check.outputs.version }}
+          CURRENT: ${{ steps.check.outputs.current }}
+          DOWNLOADS: ${{ matrix.downloads }}
+          LLVM_ENABLED: ${{ matrix.llvm_enabled }}
+          LLVM_MAX: ${{ needs.detect-llvm.outputs.llvm_max }}
+          LLVM_MIN: ${{ matrix.llvm_min }}
+          LLVM_STYLE: ${{ matrix.llvm_style }}
+        run: bash .github/scripts/bump-package.sh
+
+      # ── Commit and push ──
+      - name: Commit and push
+        if: steps.check.outputs.update-needed == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+          PKG: ${{ matrix.category }}/${{ matrix.pkg_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "${PKG}: bump to ${VERSION}"
+          git pull --rebase origin main
+          git push

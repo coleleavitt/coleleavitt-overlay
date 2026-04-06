@@ -3,7 +3,7 @@
 
 EAPI=8
 
-LLVM_COMPAT=( {18..20} )
+LLVM_COMPAT=( {18..22} )
 RUST_MIN_VER="1.80.1"
 
 # used for version string
