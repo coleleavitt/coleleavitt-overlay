@@ -3,7 +3,7 @@ name: Gentoo Overlay QA
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   pkgcheck:
