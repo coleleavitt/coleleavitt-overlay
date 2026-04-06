@@ -126,7 +126,7 @@ jobs:
 
     steps:
       - name: Checkout overlay
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}

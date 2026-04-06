@@ -60,10 +60,11 @@ EBUILD_SHA512=$(sha512sum "${NEW_EBUILD}" | awk '{print $1}')
 echo "  EBUILD ${NEW_EBUILD} ${EBUILD_SIZE} bytes"
 
 # --- Download distfiles and compute DIST checksums ---
-DIST_LINES=""
-echo "${DOWNLOADS}" | jq -c '.[]' | while read -r entry; do
-  URL=$(echo "$entry" | jq -r '.url' | sed "s/{VERSION}/${VERSION}/g")
-  FILENAME=$(echo "$entry" | jq -r '.filename' | sed "s/{VERSION}/${VERSION}/g")
+rm -f /tmp/new_dist_lines.txt
+DOWNLOAD_COUNT=$(echo "${DOWNLOADS}" | jq -r 'length')
+for i in $(seq 0 $((DOWNLOAD_COUNT - 1))); do
+  URL=$(echo "${DOWNLOADS}" | jq -r ".[$i].url" | sed "s/{VERSION}/${VERSION}/g")
+  FILENAME=$(echo "${DOWNLOADS}" | jq -r ".[$i].filename" | sed "s/{VERSION}/${VERSION}/g")
 
   echo "  Downloading: ${FILENAME}"
   wget -q -O "/tmp/${FILENAME}" "${URL}"

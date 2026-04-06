@@ -21,11 +21,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout overlay
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
       - name: Run pkgcheck
         uses: pkgcore/pkgcheck-action@v1
         with:
-          args: --keywords=-RedundantVersion,-NonsolvableDepsInDev
+          # --exit overrides the hardcoded GentooCI checkset from pkgcheck-action
+          # Fail on errors EXCEPT expected overlay warnings:
+          #   NonsolvableDepsInStable — ~arch deps not in stable profiles (expected)
+          #   NonsolvableDepsInDev    — same for ~arch/dev profiles
+          #   VisibleVcsPkg           — live 9999 ebuilds visible (expected)
+          #   UnknownMirror           — overlay-only mirrors (linssid/sourceforge)
+          #   RedundantVersion        — multiple versions are intentional
+          args: --exit error,-NonsolvableDepsInStable,-NonsolvableDepsInDev,-VisibleVcsPkg,-UnknownMirror,-RedundantVersion
