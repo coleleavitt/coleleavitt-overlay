@@ -41,9 +41,9 @@ echo "  Template: ${TEMPLATE} -> ${NEW_EBUILD}"
 cp "${TEMPLATE}" "${NEW_EBUILD}"
 
 # --- Update LLVM_COMPAT if needed ---
-if [ "${LLVM_ENABLED}" = "true" ] && [ -n "${LLVM_MAX}" ]; then
+if [ "${LLVM_ENABLED:-false}" = "true" ] && [ -n "${LLVM_MAX:-}" ]; then
   echo "  Updating LLVM_COMPAT (max=${LLVM_MAX}, min=${LLVM_MIN:-18}, style=${LLVM_STYLE:-range})"
-  if [ "${LLVM_STYLE}" = "list" ]; then
+  if [ "${LLVM_STYLE:-range}" = "list" ]; then
     LIST=$(seq "${LLVM_MIN:-17}" "${LLVM_MAX}" | tr '\n' ' ' | sed 's/ *$//')
     sed -i "s/LLVM_COMPAT=( [0-9 ]* )/LLVM_COMPAT=( ${LIST} )/" "${NEW_EBUILD}"
   else
@@ -54,7 +54,7 @@ fi
 # --- Update Rust stdlib CRATES if needed ---
 # For packages using -Z build-std (e.g. mitmproxy-linux), the CRATES list
 # must match the installed Rust nightly's stdlib Cargo.lock.
-if [ "${RUST_SYSROOT_CRATES}" = "true" ]; then
+if [ "${RUST_SYSROOT_CRATES:-false}" = "true" ]; then
   echo "  Updating CRATES from Rust stdlib Cargo.lock"
 
   CARGO_LOCK=""
