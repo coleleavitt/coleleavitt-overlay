@@ -154,6 +154,8 @@ fi
 # --- Regenerate full Manifest from disk (like `ebuild manifest`) ---
 echo "  Regenerating Manifest"
 
+shopt -s nullglob
+
 _checksum_file() {
   local file="$1" type="$2" name="$3"
   local size blake2b sha512
@@ -163,28 +165,26 @@ _checksum_file() {
   echo "${type} ${name} ${size} BLAKE2B ${blake2b} SHA512 ${sha512}"
 }
 
-{
-  # AUX: files in files/ directory
-  if [ -d files ]; then
-    for f in files/*; do
-      [ -f "$f" ] && _checksum_file "$f" "AUX" "$(basename "$f")"
-    done
-  fi
+: > /tmp/manifest_entries.txt
 
-  # DIST: new downloads + existing + gentoo extras
-  cat /tmp/new_dist_lines.txt 2>/dev/null || true
-  grep "^DIST" Manifest 2>/dev/null || true
-
-  # EBUILD: all .ebuild files in current directory
-  for f in *.ebuild; do
-    [ -f "$f" ] && _checksum_file "$f" "EBUILD" "$f"
+if [ -d files ]; then
+  for f in files/*; do
+    [ -f "$f" ] && _checksum_file "$f" "AUX" "$(basename "$f")" >> /tmp/manifest_entries.txt
   done
+fi
 
-  # MISC: metadata.xml and other non-ebuild, non-Manifest files
-  for f in *.xml *.conf; do
-    [ -f "$f" ] && [ "$f" != "Manifest" ] && _checksum_file "$f" "MISC" "$f"
-  done
-} | sort -t' ' -k1,1 -k2,2V -u > Manifest.new
+cat /tmp/new_dist_lines.txt >> /tmp/manifest_entries.txt 2>/dev/null || true
+grep "^DIST" Manifest >> /tmp/manifest_entries.txt 2>/dev/null || true
+
+for f in *.ebuild; do
+  [ -f "$f" ] && _checksum_file "$f" "EBUILD" "$f" >> /tmp/manifest_entries.txt
+done
+
+for f in *.xml; do
+  [ -f "$f" ] && _checksum_file "$f" "MISC" "$f" >> /tmp/manifest_entries.txt
+done
+
+sort -t' ' -k1,1 -k2,2V -u /tmp/manifest_entries.txt > Manifest.new
 
 mv Manifest.new Manifest
 rm -f /tmp/new_dist_lines.txt
