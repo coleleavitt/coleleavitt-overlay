@@ -136,8 +136,8 @@ if [ -f "$GENTOO_MANIFEST" ]; then
 else
   # In CI, gentoo repo is synced by pkgcheck-action but not by auto-update.
   # Try fetching the Manifest directly from GitHub.
-  GENTOO_CI_MANIFEST=$(curl -sL "https://raw.githubusercontent.com/gentoo-mirror/gentoo/master/${PKG_DIR}/Manifest" 2>/dev/null || true)
-  if [ -n "$GENTOO_CI_MANIFEST" ]; then
+  GENTOO_CI_MANIFEST=$(curl -sL -f "https://raw.githubusercontent.com/gentoo-mirror/gentoo/master/${PKG_DIR}/Manifest" 2>/dev/null || true)
+  if [ -n "$GENTOO_CI_MANIFEST" ] && echo "$GENTOO_CI_MANIFEST" | grep -q "^DIST"; then
     echo "  Checking gentoo Manifest (from GitHub) for extra distfiles"
     echo "$GENTOO_CI_MANIFEST" | grep "^DIST" | while read -r line; do
       DIST_NAME=$(echo "$line" | awk '{print $2}')
