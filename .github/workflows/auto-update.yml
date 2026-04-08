@@ -1,6 +1,9 @@
 name: Auto-update packages
 
 on:
+  push:
+    paths-ignore:
+      - '**'
   schedule:
     - cron: '0 7 * * *'
   workflow_dispatch:
@@ -34,7 +37,6 @@ jobs:
   # Phase 1: Detect upstream LLVM (shared by all LLVM-dependent packages)
   # ──────────────────────────────────────────────
   detect-llvm:
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     outputs:
       llvm_max: ${{ steps.llvm.outputs.llvm_max }}
