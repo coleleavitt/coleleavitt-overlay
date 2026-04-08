@@ -71,7 +71,7 @@ jobs:
             pkg_name: mesa
             check_type: archive
             check_url: https://archive.mesa3d.org/
-            check_regex: 'mesa-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.xz'
+            check_regex: 'mesa-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)'
             downloads: '[{"url":"https://archive.mesa3d.org/mesa-{VERSION}.tar.xz","filename":"mesa-{VERSION}.tar.xz"}]'
             llvm_enabled: true
             llvm_min: 18
@@ -83,7 +83,7 @@ jobs:
             pkg_name: mesa_clc
             check_type: archive
             check_url: https://archive.mesa3d.org/
-            check_regex: 'mesa-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.xz'
+            check_regex: 'mesa-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)'
             downloads: '[{"url":"https://archive.mesa3d.org/mesa-{VERSION}.tar.xz","filename":"mesa-{VERSION}.tar.xz"}]'
             llvm_enabled: true
             llvm_min: 18
@@ -201,15 +201,16 @@ jobs:
     steps:
       - name: Check if this matrix entry should run
         id: guard
+        env:
+          EVENT: ${{ github.event_name }}
+          SELECTED: ${{ github.event.inputs.package }}
+          CURRENT: ${{ matrix.package }}
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]] || \
-             [[ "${{ github.event.inputs.package }}" == "all" ]] || \
-             [[ "${{ github.event.inputs.package }}" == "" ]] || \
-             [[ "${{ github.event.inputs.package }}" == "${{ matrix.package }}" ]]; then
+          if [[ "$EVENT" == "schedule" || "$SELECTED" == "all" || -z "$SELECTED" || "$SELECTED" == "$CURRENT" ]]; then
             echo "run=true" >> $GITHUB_OUTPUT
           else
             echo "run=false" >> $GITHUB_OUTPUT
-            echo "Skipping ${{ matrix.package }} (selected: ${{ github.event.inputs.package }})"
+            echo "Skipping $CURRENT (selected: $SELECTED)"
           fi
 
       - name: Checkout overlay
