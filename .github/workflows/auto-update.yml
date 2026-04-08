@@ -194,18 +194,26 @@ jobs:
             llvm_min: ''
             llvm_style: ''
 
-    # Skip matrix entries not matching manual dispatch selection
-    if: >-
-      github.event_name == 'schedule' ||
-      github.event.inputs.package == 'all' ||
-      github.event.inputs.package == matrix.package
-
     concurrency:
       group: overlay-push
       cancel-in-progress: false
 
     steps:
+      - name: Check if this matrix entry should run
+        id: guard
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]] || \
+             [[ "${{ github.event.inputs.package }}" == "all" ]] || \
+             [[ "${{ github.event.inputs.package }}" == "" ]] || \
+             [[ "${{ github.event.inputs.package }}" == "${{ matrix.package }}" ]]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+            echo "Skipping ${{ matrix.package }} (selected: ${{ github.event.inputs.package }})"
+          fi
+
       - name: Checkout overlay
+        if: steps.guard.outputs.run == 'true'
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
@@ -213,6 +221,7 @@ jobs:
 
       # ── Version detection (branched by check_type) ──
       - name: Detect latest version
+        if: steps.guard.outputs.run == 'true'
         id: check
         env:
           CHECK_TYPE: ${{ matrix.check_type }}
