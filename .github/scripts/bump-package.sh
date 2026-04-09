@@ -117,6 +117,55 @@ for i in $(seq 0 $((DOWNLOAD_COUNT - 1))); do
   rm -f "/tmp/${FILENAME}"
 done
 
+# --- Handle Cargo/CRATES packages ---
+if grep -q '^CRATES=' "${NEW_EBUILD}" 2>/dev/null; then
+  echo "  Detected Cargo package with CRATES"
+  CRATES_LIST=$(sed -n '/^CRATES="/,/^"/p' "${NEW_EBUILD}" | grep -oP '[a-zA-Z0-9_-]+@[0-9.]+' || true)
+
+  if [ -n "$CRATES_LIST" ]; then
+    echo "  Downloading $(echo "$CRATES_LIST" | wc -l) crates from crates.io"
+    for crate_entry in $CRATES_LIST; do
+      CNAME="${crate_entry%@*}"
+      CVER="${crate_entry##*@}"
+      CFILE="${CNAME}-${CVER}.crate"
+      CURL="https://crates.io/api/v1/crates/${CNAME}/${CVER}/download"
+
+      if grep -q "^DIST ${CFILE} " Manifest 2>/dev/null; then
+        continue
+      fi
+      if grep -q "^DIST ${CFILE} " /tmp/new_dist_lines.txt 2>/dev/null; then
+        continue
+      fi
+
+      wget -q -O "/tmp/${CFILE}" "${CURL}" 2>/dev/null || continue
+      SIZE=$(stat -c%s "/tmp/${CFILE}")
+      BLAKE2B=$(b2sum "/tmp/${CFILE}" | awk '{print $1}')
+      SHA512=$(sha512sum "/tmp/${CFILE}" | awk '{print $1}')
+      echo "DIST ${CFILE} ${SIZE} BLAKE2B ${BLAKE2B} SHA512 ${SHA512}" >> /tmp/new_dist_lines.txt
+      rm -f "/tmp/${CFILE}"
+    done
+  fi
+
+  GIT_CRATES_URLS=$(grep -A50 'declare -A GIT_CRATES' "${NEW_EBUILD}" 2>/dev/null | grep -oP 'https://github\.com/[^"]+' || true)
+  for git_url in $GIT_CRATES_URLS; do
+    REPO_NAME=$(echo "$git_url" | sed 's|.*/||')
+    COMMIT=$(grep -A2 "$git_url" "${NEW_EBUILD}" | grep -oP '[a-f0-9]{40}' | head -1 || true)
+    if [ -n "$COMMIT" ]; then
+      GH_FILE="${REPO_NAME}-${COMMIT}.gh.tar.gz"
+      if ! grep -q "^DIST ${GH_FILE} " Manifest 2>/dev/null && ! grep -q "^DIST ${GH_FILE} " /tmp/new_dist_lines.txt 2>/dev/null; then
+        DL_URL="${git_url}/archive/${COMMIT}.tar.gz"
+        wget -q -O "/tmp/${GH_FILE}" "${DL_URL}" 2>/dev/null || continue
+        SIZE=$(stat -c%s "/tmp/${GH_FILE}")
+        BLAKE2B=$(b2sum "/tmp/${GH_FILE}" | awk '{print $1}')
+        SHA512=$(sha512sum "/tmp/${GH_FILE}" | awk '{print $1}')
+        echo "DIST ${GH_FILE} ${SIZE} BLAKE2B ${BLAKE2B} SHA512 ${SHA512}" >> /tmp/new_dist_lines.txt
+        rm -f "/tmp/${GH_FILE}"
+      fi
+    fi
+  done
+  echo "  Crate DIST entries generated"
+fi
+
 # --- Pull extra DIST entries from gentoo Manifest ---
 # Packages like cmake reference additional distfiles (docs, signatures)
 # that we don't download ourselves. Pull their checksums from gentoo.
