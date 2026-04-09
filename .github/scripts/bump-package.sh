@@ -40,6 +40,18 @@ NEW_EBUILD="${PKG_NAME}-${VERSION}.ebuild"
 echo "  Template: ${TEMPLATE} -> ${NEW_EBUILD}"
 cp "${TEMPLATE}" "${NEW_EBUILD}"
 
+TEMPLATE_VER=$(echo "$TEMPLATE" | sed -n "s/${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p")
+if [ -d files ] && [ -n "$TEMPLATE_VER" ] && [ "$TEMPLATE_VER" != "$VERSION" ]; then
+  for patchfile in files/*"${TEMPLATE_VER}"*; do
+    [ -f "$patchfile" ] || continue
+    NEWPATCH="${patchfile//${TEMPLATE_VER}/${VERSION}}"
+    if [ ! -f "$NEWPATCH" ]; then
+      cp "$patchfile" "$NEWPATCH"
+      echo "  Copied patch: $(basename "$patchfile") -> $(basename "$NEWPATCH")"
+    fi
+  done
+fi
+
 # --- Update LLVM_COMPAT if needed ---
 if [ "${LLVM_ENABLED:-false}" = "true" ] && [ -n "${LLVM_MAX:-}" ]; then
   echo "  Updating LLVM_COMPAT (max=${LLVM_MAX}, min=${LLVM_MIN:-18}, style=${LLVM_STYLE:-range})"

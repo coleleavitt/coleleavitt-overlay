@@ -339,12 +339,13 @@ jobs:
             NEW="spirv-llvm-translator-${VERSION}.ebuild"
             cp "$TEMPLATE" "$NEW"
 
-            wget -q -O "/tmp/spirv-${VERSION}.tar.gz" \
+            DISTNAME="spirv-llvm-translator-${VERSION}.tar.gz"
+            wget -q -O "/tmp/${DISTNAME}" \
               "https://github.com/KhronosGroup/SPIRV-LLVM-Translator/archive/refs/tags/v${VERSION}.tar.gz"
 
-            SIZE=$(stat -c%s "/tmp/spirv-${VERSION}.tar.gz")
-            BLAKE2B=$(b2sum "/tmp/spirv-${VERSION}.tar.gz" | awk '{print $1}')
-            SHA512=$(sha512sum "/tmp/spirv-${VERSION}.tar.gz" | awk '{print $1}')
+            SIZE=$(stat -c%s "/tmp/${DISTNAME}")
+            BLAKE2B=$(b2sum "/tmp/${DISTNAME}" | awk '{print $1}')
+            SHA512=$(sha512sum "/tmp/${DISTNAME}" | awk '{print $1}')
 
             EBUILD_SIZE=$(stat -c%s "$NEW")
             EBUILD_B2=$(b2sum "$NEW" | awk '{print $1}')
@@ -353,13 +354,13 @@ jobs:
             {
               echo "EBUILD ${NEW} ${EBUILD_SIZE} BLAKE2B ${EBUILD_B2} SHA512 ${EBUILD_SHA}"
               grep "^EBUILD" Manifest | grep -v "$NEW" || true
-              echo "DIST SPIRV-LLVM-Translator-${VERSION}.tar.gz ${SIZE} BLAKE2B ${BLAKE2B} SHA512 ${SHA512}"
+              echo "DIST ${DISTNAME} ${SIZE} BLAKE2B ${BLAKE2B} SHA512 ${SHA512}"
               grep "^DIST" Manifest || true
               grep "^MISC" Manifest || true
               grep "^AUX" Manifest || true
             } | sort -t' ' -k1,1 -k2,2V -u > Manifest.new
             mv Manifest.new Manifest
-            rm -f "/tmp/spirv-${VERSION}.tar.gz"
+            rm -f "/tmp/${DISTNAME}"
           done
 
       # ── Commit and push ──
