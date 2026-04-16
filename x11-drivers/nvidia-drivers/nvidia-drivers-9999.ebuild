@@ -17,7 +17,7 @@ HOMEPAGE="https://www.nvidia.com/ https://github.com/coleleavitt/open-gpu-kernel
 
 # Git repo for kernel modules (your fork with patches)
 EGIT_REPO_URI="https://github.com/coleleavitt/open-gpu-kernel-modules.git"
-EGIT_BRANCH="main"
+EGIT_BRANCH="coleleavitt/dev"
 
 SRC_URI="
 	amd64? ( ${NV_URI}Linux-x86_64/${NV_DRIVER_VERSION}/NVIDIA-Linux-x86_64-${NV_DRIVER_VERSION}.run )
