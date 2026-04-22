@@ -19,9 +19,8 @@ declare -A GIT_CRATES=(
 LLVM_COMPAT=( {20..22} )
 RUST_REQ_USE="llvm_targets_BPF(+),rust-src"
 
-PATCHES=(
-	"${FILESDIR}/${P}-use-llvm-config-libdir.patch"
-)
+# No patches needed for 0.10.3: upstream now handles lib64/lib32 multilib
+# directories natively via find_libdir() in build.rs.
 
 inherit cargo llvm-r2
 
