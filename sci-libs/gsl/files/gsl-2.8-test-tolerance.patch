@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Michael Orlitzky <michael@orlitzky.com>
+Date: Sun, 30 Jun 2024 19:45:45 -0400
+Subject: [PATCH] eigen/test.c: loosen tolerance in eigenvalue norm tests
+
+Rebased for gsl-2.8 where the function context has shifted.
+
+One test for the (unit) norm of a random hermitian matrix's
+eigenvalues is victim to tolerance issues, e.g.
+
+  FAIL: herm random, normalized(1), unsorted (0.999999999999999112
+  observed vs 1 expected) [117761]
+
+The tolerance used is N*GSL_DBL_EPSILON, where N is the size of the
+matrix. Increase tolerance to N*N*10*GSL_DBL_EPSILON.
+
+Bug: https://bugs.gentoo.org/664936
+Bug: https://savannah.gnu.org/bugs/?56843
+---
+ eigen/test.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/eigen/test.c b/eigen/test.c
+index 1234567..abcdefg 100644
+--- a/eigen/test.c
++++ b/eigen/test.c
+@@ -506,7 +506,7 @@ test_eigen_herm_results (const gsl_matrix_complex * A,
+     {
+       gsl_vector_complex_const_view vi = gsl_matrix_complex_const_column(evec, i);
+       double nrm_v = gsl_blas_dznrm2(&vi.vector);
+-      gsl_test_rel (nrm_v, 1.0, N * GSL_DBL_EPSILON, "%s, normalized(%d), %s", 
++      gsl_test_rel (nrm_v, 1.0, N*N * 10.0 * GSL_DBL_EPSILON, "%s, normalized(%d), %s", 
+                     desc, i, desc2);
+     }
+ 

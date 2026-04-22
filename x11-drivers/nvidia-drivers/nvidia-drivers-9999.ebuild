@@ -7,9 +7,9 @@ MODULES_OPTIONAL_IUSE=+modules
 inherit desktop dot-a eapi9-pipestatus eapi9-ver flag-o-matic linux-mod-r1
 inherit readme.gentoo-r1 systemd toolchain-funcs unpacker user-info git-r3
 
-# Use the 590 driver version for userspace components
-NV_DRIVER_VERSION="590.48.01"
-MODULES_KERNEL_MAX=6.99
+# Userspace version matching kernel module fork (595.45.04 released upstream)
+NV_DRIVER_VERSION="595.45.04"
+MODULES_KERNEL_MAX=7.99
 NV_URI="https://download.nvidia.com/XFree86/"
 
 DESCRIPTION="NVIDIA Accelerated Graphics Driver (live git kernel modules)"
@@ -31,7 +31,7 @@ LICENSE="
 	NVIDIA-2025 Apache-2.0 Boost-1.0 BSD BSD-2 GPL-2 MIT ZLIB
 	curl openssl public-domain
 "
-SLOT="0/590"
+SLOT="0/595"
 KEYWORDS=""
 IUSE="
 	+X abi_x86_32 abi_x86_64 +kernel-open persistenced powerd
@@ -477,7 +477,7 @@ pkg_postinst() {
 	elog "This is a LIVE ebuild using kernel modules from your GitHub fork:"
 	elog "  https://github.com/coleleavitt/open-gpu-kernel-modules"
 	elog ""
-	elog "Userspace components are from nvidia-drivers-${NV_DRIVER_VERSION}"
+	elog "Userspace and kernel modules are version ${NV_DRIVER_VERSION}"
 	elog ""
 
 	if [[ -r /proc/driver/nvidia/version &&
