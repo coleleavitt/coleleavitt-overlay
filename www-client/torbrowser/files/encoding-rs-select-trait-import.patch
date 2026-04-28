@@ -1,0 +1,20 @@
+From: Cole Leavitt <cole@unwrap.rs>
+Subject: encoding_rs: import Select trait for portable_simd on rustc >= 1.95
+
+Starting with rustc 1.95-nightly, Mask::select was moved from an inherent
+method to the Select trait (core::simd::Select). Upstream encoding_rs 0.8.35
+handles this via #[rustversion::since(1.95)], but Firefox's vendored copy
+strips the rustversion dependency from the simd-accel feature, so the
+conditional import is absent. Add the unconditional import — it's required
+for any nightly >= 1.95 and the simd-accel feature is only used on nightly.
+
+--- a/third_party/rust/encoding_rs/src/x_user_defined.rs
++++ b/third_party/rust/encoding_rs/src/x_user_defined.rs
+@@ -15,6 +15,7 @@
+     if #[cfg(feature = "simd-accel")] {
+         use simd_funcs::*;
+         use core::simd::u16x8;
++        use core::simd::Select;
+         use core::simd::cmp::SimdPartialOrd;
+ 
+         #[inline(always)]

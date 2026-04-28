@@ -296,6 +296,10 @@ src_prepare() {
 	# nss_prelude::SECItemType doesn't get generated. Explicitly allowlist it.
 	eapply "${FILESDIR}/nss-gk-api-secitemtype-allowlist.patch"
 
+	# rustc >= 1.95: Mask::select moved to the Select trait. Firefox strips
+	# rustversion from encoding_rs's simd-accel feature, so add import directly.
+	eapply "${FILESDIR}/encoding-rs-select-trait-import.patch"
+
 	# see https://gitlab.torproject.org/tpo/applications/tor-browser/-/issues/44311
 	# see https://codeberg.org/librewolf/source/src/branch/main/patches/moz-configure.patch
 	sed -i \
