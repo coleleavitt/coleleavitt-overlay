@@ -286,8 +286,13 @@ jobs:
                 for SLOT in $(seq 18 30); do
                   UPSTREAM=$(echo "$ALL_TAGS" | grep -E "^v${SLOT}\." | sort -V | tail -1 | sed 's/^v//')
                   [ -z "$UPSTREAM" ] && continue
-                  CURRENT=$(ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}-${SLOT}."*.ebuild 2>/dev/null | \
-                    sed -n "s/.*${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p" | sort -V | tail -1)
+                  CURRENT_EBUILD=$(ls "${CATEGORY}/${PKG_NAME}/${PKG_NAME}-${SLOT}."*.ebuild 2>/dev/null | sort -V | tail -1)
+                  [ -z "$CURRENT_EBUILD" ] && continue
+                  if grep -q '^EGIT_COMMIT=' "$CURRENT_EBUILD"; then
+                    echo "Skipping slot ${SLOT}: commit-pinned ebuild, requires manual mirror from gentoo upstream"
+                    continue
+                  fi
+                  CURRENT=$(echo "$CURRENT_EBUILD" | sed -n "s/.*${PKG_NAME}-\([0-9][^-]*\)\(-r[0-9]*\)\?\.ebuild/\1/p")
                   if [ "$UPSTREAM" != "$CURRENT" ] && [ -n "$CURRENT" ]; then
                     UPDATES="${UPDATES}${SLOT}:${CURRENT}:${UPSTREAM} "
                   fi

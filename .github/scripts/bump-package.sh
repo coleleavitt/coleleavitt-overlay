@@ -114,7 +114,7 @@ fi
 rm -f /tmp/new_dist_lines.txt
 DOWNLOAD_COUNT=$(echo "${DOWNLOADS}" | jq -r 'length')
 for i in $(seq 0 $((DOWNLOAD_COUNT - 1))); do
-  MINOR_VERSION=$(echo "${VERSION}" | grep -oP '^[0-9]+\.[0-9]+')
+  MINOR_VERSION=$(echo "${VERSION}" | grep -oP '^[0-9]+\.[0-9]+' || true)
   URL=$(echo "${DOWNLOADS}" | jq -r ".[$i].url" | sed "s/{VERSION}/${VERSION}/g; s/{MINOR_VERSION}/${MINOR_VERSION}/g")
   FILENAME=$(echo "${DOWNLOADS}" | jq -r ".[$i].filename" | sed "s/{VERSION}/${VERSION}/g; s/{MINOR_VERSION}/${MINOR_VERSION}/g")
 
