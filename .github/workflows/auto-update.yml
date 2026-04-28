@@ -24,6 +24,7 @@ on:
           - bpf-linker
           - cmake
           - spirv-llvm-translator
+          - torbrowser
         default: all
       version:
         description: 'Version override (empty = detect latest)'
@@ -194,6 +195,21 @@ jobs:
             llvm_min: ''
             llvm_style: ''
 
+          # ── torbrowser ──
+          # Mirrors MeisterP/torbrowser-overlay since torbrowser ebuilds are too
+          # complex for generic templating (5 cross-referenced distfile versions).
+          # bump-torbrowser.sh handles the mirror + LLVM_COMPAT extension.
+          - package: torbrowser
+            category: www-client
+            pkg_name: torbrowser
+            check_type: torbrowser_overlay
+            check_repo: MeisterP/torbrowser-overlay
+            check_path: www-client/torbrowser
+            downloads: '[]'
+            llvm_enabled: true
+            llvm_min: ''
+            llvm_style: mirror
+
     concurrency:
       group: overlay-push
       cancel-in-progress: false
@@ -229,6 +245,7 @@ jobs:
           CHECK_URL: ${{ matrix.check_url }}
           CHECK_REGEX: ${{ matrix.check_regex }}
           CHECK_REPO: ${{ matrix.check_repo }}
+          CHECK_PATH: ${{ matrix.check_path }}
           STRIP_V: ${{ matrix.strip_v }}
           TAG_PREFIX: ${{ matrix.tag_prefix }}
           CATEGORY: ${{ matrix.category }}
@@ -283,6 +300,12 @@ jobs:
                   echo "update-needed=false" >> $GITHUB_OUTPUT
                 fi
                 ;;
+              torbrowser_overlay)
+                LATEST=$(curl -sL "https://api.github.com/repos/${CHECK_REPO}/contents/${CHECK_PATH}" | \
+                  jq -r '.[].name' | \
+                  grep -oP "^${PKG_NAME}-\K[0-9][^-]*(?=\.ebuild)" | \
+                  sort -V | tail -1)
+                ;;
             esac
 
             if [ "$CHECK_TYPE" != "spirv_per_slot" ]; then
@@ -308,7 +331,7 @@ jobs:
 
       # ── Bump ebuild using shared script (standard packages) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
-        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_overlay'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -320,6 +343,19 @@ jobs:
           LLVM_MIN: ${{ matrix.llvm_min }}
           LLVM_STYLE: ${{ matrix.llvm_style }}
         run: bash .github/scripts/bump-package.sh
+
+      # ── Bump torbrowser via overlay-mirror script ──
+      - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (overlay mirror)
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'torbrowser_overlay'
+        env:
+          PKG_CATEGORY: ${{ matrix.category }}
+          PKG_NAME: ${{ matrix.pkg_name }}
+          VERSION: ${{ steps.check.outputs.version }}
+          CURRENT: ${{ steps.check.outputs.current }}
+          UPSTREAM_REPO: ${{ matrix.check_repo }}
+          UPSTREAM_PATH: ${{ matrix.check_path }}
+          LLVM_MAX: ${{ needs.detect-llvm.outputs.llvm_max }}
+        run: bash .github/scripts/bump-torbrowser.sh
 
       # ── Bump spirv-llvm-translator per LLVM slot ──
       - name: Bump spirv-llvm-translator per slot
