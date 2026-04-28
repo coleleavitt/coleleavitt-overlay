@@ -1,0 +1,32 @@
+From: Cole Leavitt <cole@unwrap.rs>
+Subject: bindgen: fix type declaration resolution for clang/libclang >= 22
+
+Backport of rust-lang/rust-bindgen PR #3278 to bindgen 0.69.4 (bundled
+in Firefox ESR 140). LLVM PR #147835 changed TagType::getDecl() to
+return the syntactically-encountered declaration instead of always
+resolving to the definition. This breaks bindgen's transitive type
+discovery for typedef'd enums used as struct field types.
+
+The fix: after clang_getTypeDeclaration(), follow forward declarations
+to their definitions via clang_getCursorDefinition(). This is a no-op
+on older clang (getDecl already returned the definition) and restores
+correct behavior on clang >= 22.
+
+--- a/third_party/rust/bindgen/clang.rs
++++ b/third_party/rust/bindgen/clang.rs
+@@ -1211,11 +1211,10 @@
+ 
+     /// Get a cursor pointing to this type's declaration.
+     pub(crate) fn declaration(&self) -> Cursor {
+-        unsafe {
+-            Cursor {
+-                x: clang_getTypeDeclaration(self.x),
+-            }
+-        }
++        let decl = Cursor {
++            x: unsafe { clang_getTypeDeclaration(self.x) },
++        };
++        decl.definition().unwrap_or(decl)
+     }
+ 
+     /// Get the canonical declaration of this type, if it is available.

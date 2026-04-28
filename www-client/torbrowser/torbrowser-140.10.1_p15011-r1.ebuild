@@ -291,6 +291,11 @@ src_prepare() {
 		eapply "${FILESDIR}/firefox-146.0.1-icu78.patch" # bgo#967261
 	fi
 
+	# bindgen + libclang>=22: backport rust-lang/rust-bindgen PR #3278.
+	# clang_getTypeDeclaration() now returns forward declarations instead of
+	# definitions (LLVM PR #147835). Follow them via clang_getCursorDefinition().
+	eapply "${FILESDIR}/bindgen-clang22-declaration-fix.patch"
+
 	# bindgen + libclang>=22: SECItemType isn't auto-pulled as transitive dep
 	# from SECItemStr's `type` field, so nss-gk-api fails to compile because
 	# nss_prelude::SECItemType doesn't get generated. Explicitly allowlist it.
@@ -352,6 +357,8 @@ src_prepare() {
 	moz_clear_vendor_checksums encoding_rs
 	# nss-gk-api: patched for SECItemType allowlist (libclang >= 22)
 	moz_clear_vendor_checksums nss-gk-api
+	# bindgen: backported clang 22 declaration fix from PR #3278
+	moz_clear_vendor_checksums bindgen
 
 	# Changing the value for FILES_PER_UNIFIED_FILE may not work, see #905431
 	if [[ -n ${FILES_PER_UNIFIED_FILE} ]]; then
