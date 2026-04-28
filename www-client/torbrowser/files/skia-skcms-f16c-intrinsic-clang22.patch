@@ -1,0 +1,20 @@
+From: Cole Leavitt <cole@unwrap.rs>
+Subject: skia/skcms: use standard F16C intrinsic for clang >= 22
+
+clang 22 removed the __builtin_ia32_vcvtph2ps256 builtin. Use the
+standard _mm256_cvtph_ps intrinsic from <immintrin.h> instead, which
+works on all clang/gcc versions with F16C support and is the preferred
+API per Intel intrinsics guide.
+
+--- a/gfx/skia/skia/modules/skcms/src/Transform_inl.h
++++ b/gfx/skia/skia/modules/skcms/src/Transform_inl.h
+@@ -157,8 +157,7 @@
+ #elif defined(USING_AVX512F)
+     return (F)_mm512_cvtph_ps((__m256i)half);
+ #elif defined(USING_AVX_F16C)
+-    typedef int16_t __attribute__((vector_size(16))) I16;
+-    return __builtin_ia32_vcvtph2ps256((I16)half);
++    return (F)_mm256_cvtph_ps((__m128i)half);
+ #else
+     U32 wide = cast<U32>(half);
+     // A half is 1-5-10 sign-exponent-mantissa, with 15 exponent bias.

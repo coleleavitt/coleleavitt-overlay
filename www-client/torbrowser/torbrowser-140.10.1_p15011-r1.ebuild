@@ -305,6 +305,9 @@ src_prepare() {
 	# rustversion from encoding_rs's simd-accel feature, so add import directly.
 	eapply "${FILESDIR}/encoding-rs-select-trait-import.patch"
 
+	# clang >= 22: removed __builtin_ia32_vcvtph2ps256; use _mm256_cvtph_ps
+	eapply "${FILESDIR}/skia-skcms-f16c-intrinsic-clang22.patch"
+
 	# see https://gitlab.torproject.org/tpo/applications/tor-browser/-/issues/44311
 	# see https://codeberg.org/librewolf/source/src/branch/main/patches/moz-configure.patch
 	sed -i \
