@@ -281,6 +281,9 @@ src_prepare() {
 		rm -v "${WORKDIR}"/firefox-patches/*bgo-748849-RUST_TARGET_override.patch || die
 	fi
 
+	# 140.10.1 already vendors ffmpeg62 headers; patchset-07 predates this release
+	rm -vf "${WORKDIR}"/firefox-patches/*bmo-1962139-vendor-ffmpeg-8-headers.patch
+
 	eapply "${WORKDIR}/firefox-patches"
 
 	# ICU's subslot change should trigger rebuild on Firefox if it is updated 77->78.
