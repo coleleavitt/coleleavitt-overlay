@@ -196,13 +196,14 @@ jobs:
             llvm_style: ''
 
           # ── torbrowser ──
-          # Mirrors MeisterP/torbrowser-overlay since torbrowser ebuilds are too
-          # complex for generic templating (5 cross-referenced distfile versions).
-          # bump-torbrowser.sh handles the mirror + LLVM_COMPAT extension.
+          # Tracks Tor Project's AUS API directly (no MeisterP dependency).
+          # bump-torbrowser.sh templates the ebuild from version variables
+          # derived from the Tor Project's release infrastructure, patches
+          # LLVM_COMPAT, and applies clang>=22 compatibility patches.
           - package: torbrowser
             category: www-client
             pkg_name: torbrowser
-            check_type: torbrowser_overlay
+            check_type: torbrowser_torproject
             check_repo: MeisterP/torbrowser-overlay
             check_path: www-client/torbrowser
             downloads: '[]'
@@ -305,11 +306,16 @@ jobs:
                   echo "update-needed=false" >> $GITHUB_OUTPUT
                 fi
                 ;;
-              torbrowser_overlay)
-                LATEST=$(curl -sL "https://api.github.com/repos/${CHECK_REPO}/contents/${CHECK_PATH}" | \
-                  jq -r '.[].name' | \
-                  grep -oP "^${PKG_NAME}-\K[0-9][^-]*(?=\.ebuild)" | \
-                  sort -V | tail -1)
+              torbrowser_torproject)
+                TOR_DL_JSON=$(curl -sL "https://aus1.torproject.org/torbrowser/update_3/release/downloads.json")
+                TOR_PV_UPSTREAM=$(echo "$TOR_DL_JSON" | jq -r '.version')
+                TBB_TAG=$(echo "$TOR_DL_JSON" | jq -r '.tag')
+                if [ -n "$TOR_PV_UPSTREAM" ] && [ "$TOR_PV_UPSTREAM" != "null" ]; then
+                  BUILD_SUFFIX="${TBB_TAG#tbb-${TOR_PV_UPSTREAM}-}"
+                  FF_VER=$(curl -sL "https://gitlab.torproject.org/api/v4/projects/tpo%2Fapplications%2Ftor-browser-build/repository/files/projects%2Ffirefox%2Fconfig/raw?ref=${TBB_TAG}" | grep 'firefox_platform_version' | grep -oP "'\K[^']+")
+                  TOR_PV_NODOTS="${TOR_PV_UPSTREAM//./}"
+                  LATEST="${FF_VER}_p${TOR_PV_NODOTS}"
+                fi
                 ;;
             esac
 
@@ -336,7 +342,7 @@ jobs:
 
       # ── Bump ebuild using shared script (standard packages) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
-        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_overlay'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -351,7 +357,7 @@ jobs:
 
       # ── Bump torbrowser via overlay-mirror script ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (overlay mirror)
-        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'torbrowser_overlay'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'torbrowser_torproject'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}

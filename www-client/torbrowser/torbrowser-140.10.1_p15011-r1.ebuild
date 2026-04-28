@@ -22,9 +22,9 @@ MOZ_PV="${PV/_p*}esr"
 # see https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/blob/maint-15.0/projects/firefox/config#L21
 # and https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/blob/maint-15.0/projects/browser/config#L120
 # and https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/tags
-TOR_PV="15.0.10"
-TOR_TAG="${TOR_PV%.*}-1-build2"
-NOSCRIPT_VERSION="13.6.15.1984"
+TOR_PV="15.0.11"
+TOR_TAG="${TOR_PV%.*}-1-build1"
+NOSCRIPT_VERSION="13.6.18.1984"
 CHANGELOG_TAG="${TOR_PV}-build1"
 
 inherit check-reqs desktop flag-o-matic linux-info llvm-r1 multiprocessing \
@@ -287,6 +287,11 @@ src_prepare() {
 	if use system-icu && has_version ">=dev-libs/icu-78.1" ; then
 		eapply "${FILESDIR}/firefox-146.0.1-icu78.patch" # bgo#967261
 	fi
+
+	# bindgen + libclang>=22: SECItemType isn't auto-pulled as transitive dep
+	# from SECItemStr's `type` field, so nss-gk-api fails to compile because
+	# nss_prelude::SECItemType doesn't get generated. Explicitly allowlist it.
+	eapply "${FILESDIR}/nss-gk-api-secitemtype-allowlist.patch"
 
 	# see https://gitlab.torproject.org/tpo/applications/tor-browser/-/issues/44311
 	# see https://codeberg.org/librewolf/source/src/branch/main/patches/moz-configure.patch

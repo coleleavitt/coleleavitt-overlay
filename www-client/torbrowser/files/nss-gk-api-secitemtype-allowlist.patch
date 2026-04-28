@@ -1,0 +1,27 @@
+From: Cole Leavitt <cole@unwrap.rs>
+Subject: nss-gk-api: explicitly allowlist SECItemType for clang>=22
+
+bindings.toml lists SECItemType only under the `enums` section, which calls
+bindgen's constified_enum_module() — that configures formatting but does not
+add to the allowlist. With older clang/libclang versions, SECItemType was
+auto-included as a transitive dependency of the allowlisted SECItemStr
+struct (its `type` field). Newer libclang (>=22) no longer auto-includes
+typedef enums when only the parent struct is allowlisted.
+
+Result: lib.rs:52 fails to import nss_prelude::SECItemType, breaking the
+nss-gk-api crate compile during `force-cargo-library-build`.
+
+Fix: explicitly add SECItemType to the `types` allowlist. Harmless on older
+clang and required on clang>=22. Mozilla CI uses pinned clang so they don't
+hit this; downstream builders against system clang do.
+
+--- a/third_party/rust/nss-gk-api/bindings/bindings.toml
++++ b/third_party/rust/nss-gk-api/bindings/bindings.toml
+@@ -33,6 +33,7 @@
+     "SECItem",
+     "SECItemArray",
+     "SECItemStr",
++    "SECItemType",
+     "SECStatus",
+ ]
+ functions = [
