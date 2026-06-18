@@ -1,0 +1,32 @@
+--- a/build.rs
++++ b/build.rs
+@@ -616,16 +616,19 @@
+                 paths_os.display()
+             )
+         })?;
+-    let llvm_lib_dir = llvm_config
+-        .parent()
+-        .and_then(|p| p.parent())
+-        .ok_or_else(|| {
+-            anyhow!(
+-                "llvm-config location has no parent: {}",
+-                llvm_config.display()
+-            )
+-        })?
+-        .join("lib");
++    // Use `llvm-config --libdir` instead of hardcoding "lib".
++    // On multilib systems (e.g. Gentoo), 64-bit LLVM lives in "lib64".
++    let llvm_libdir_output = Command::new(&llvm_config)
++        .arg("--libdir")
++        .output()
++        .with_context(|| format!("failed to run `{} --libdir`", llvm_config.display()))?;
++    anyhow::ensure!(
++        llvm_libdir_output.status.success(),
++        "`{} --libdir` exited with status: {}",
++        llvm_config.display(),
++        llvm_libdir_output.status
++    );
++    let llvm_lib_dir = PathBuf::from(OsStr::from_bytes(llvm_libdir_output.stdout.trim_ascii()));
+     let llvm_lib_dir = fs::canonicalize(&llvm_lib_dir).with_context(|| {
+         format!(
+             "failed to canonicalize LLVM lib directory {}",
