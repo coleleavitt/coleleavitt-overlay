@@ -87,11 +87,20 @@ src_install() {
 		rm -r "${CURSOR_HOME}/resources/app/node_modules/kerberos" || die
 	fi
 
-	# Remove foreign-arch ripgrep binaries to avoid QA soname warnings
+	# Remove foreign-arch ripgrep binaries to avoid QA soname warnings.
+	# Upstream layout shifts between releases, so locate them dynamically
+	# and tolerate their absence (e.g. newer builds ship a single native rg).
+	local _foreign_rg
 	if use amd64; then
-		rm -r "${CURSOR_HOME}/resources/app/extensions/cursor-agent/dist/claude-agent-sdk/vendor/ripgrep/arm64-linux" || die
+		_foreign_rg="arm64-linux"
 	elif use arm64; then
-		rm -r "${CURSOR_HOME}/resources/app/extensions/cursor-agent/dist/claude-agent-sdk/vendor/ripgrep/x64-linux" || die
+		_foreign_rg="x64-linux"
+	fi
+	if [[ -n ${_foreign_rg} ]]; then
+		local _dir
+		while IFS= read -r -d '' _dir; do
+			rm -r "${_dir}" || die
+		done < <(find "${CURSOR_HOME}" -type d -path "*/ripgrep/${_foreign_rg}" -print0)
 	fi
 
 	dodir /opt/cursor
