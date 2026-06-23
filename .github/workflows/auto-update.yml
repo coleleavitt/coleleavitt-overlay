@@ -13,6 +13,7 @@ on:
         type: choice
         options:
           - all
+          - cursor
           - mesa
           - mesa_clc
           - spidermonkey
@@ -66,6 +67,20 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          # ── cursor ──
+          # Cursor's SRC_URI is keyed on PV *and* the build commit (BUILD_ID).
+          # cursor_api detects both from the official download API; the
+          # dedicated bump-cursor.sh rewrites BUILD_ID and refreshes the debs.
+          - package: cursor
+            category: app-editors
+            pkg_name: cursor
+            check_type: cursor_api
+            check_url: https://www.cursor.com/api/download?platform=linux-x64&releaseTrack=latest
+            downloads: '[]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
           # ── mesa ──
           - package: mesa
             category: media-libs
@@ -262,6 +277,13 @@ jobs:
               archive)
                 LATEST=$(curl -sL "$CHECK_URL" | grep -oP "$CHECK_REGEX" | sort -V | tail -1)
                 ;;
+              cursor_api)
+                API_JSON=$(curl -sL "$CHECK_URL")
+                LATEST=$(echo "$API_JSON" | jq -r '.version')
+                BUILD_ID=$(echo "$API_JSON" | jq -r '.commitSha')
+                echo "build_id=${BUILD_ID}" >> $GITHUB_OUTPUT
+                echo "Cursor upstream: version=${LATEST} commitSha=${BUILD_ID}"
+                ;;
               github)
                 TAG=$(curl -s "https://api.github.com/repos/${CHECK_REPO}/releases/latest" | jq -r .tag_name)
                 if [ "$STRIP_V" = "true" ]; then
@@ -342,7 +364,7 @@ jobs:
 
       # ── Bump ebuild using shared script (standard packages) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
-        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject' && matrix.check_type != 'cursor_api'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -354,6 +376,17 @@ jobs:
           LLVM_MIN: ${{ matrix.llvm_min }}
           LLVM_STYLE: ${{ matrix.llvm_style }}
         run: bash .github/scripts/bump-package.sh
+
+      # ── Bump cursor via dedicated script (version + BUILD_ID) ──
+      - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (cursor)
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'cursor_api'
+        env:
+          PKG_CATEGORY: ${{ matrix.category }}
+          PKG_NAME: ${{ matrix.pkg_name }}
+          VERSION: ${{ steps.check.outputs.version }}
+          CURRENT: ${{ steps.check.outputs.current }}
+          BUILD_ID: ${{ steps.check.outputs.build_id }}
+        run: bash .github/scripts/bump-cursor.sh
 
       # ── Bump torbrowser via overlay-mirror script ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (overlay mirror)

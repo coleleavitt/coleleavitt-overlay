@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>coleleavitt@users.noreply.github.com</email>
+		<name>Cole Leavitt</name>
+	</maintainer>
+	<longdescription>
+		Cursor is an AI-first code editor built as a fork of Visual Studio
+		Code. This package installs the prebuilt Cursor desktop application
+		from the upstream .deb release. Mirrored from Gentoo's
+		app-editors/cursor and kept current by the overlay's auto-update CI.
+	</longdescription>
+	<use>
+		<flag name="egl">Use EGL for smooth rendering on high refresh rate monitors</flag>
+		<flag name="wayland">Run in wayland mode under wayland sessions, xwayland otherwise. This flag doesn't affect x11 sessions.</flag>
+	</use>
+</pkgmetadata>
