@@ -62,6 +62,7 @@ emerge -av app-editors/cursor
 | `net-im/vesktop-bin` | Vesktop (auto-updated). |
 | `net-p2p/biglybt-extreme-mod` | BiglyBT Extreme Mod. |
 | `net-proxy/mitmproxy-linux` | mitmproxy Linux redirector. |
+| `net-proxy/ngrok-bin` | ngrok stable binary (auto-updated from upstream stable tarballs). |
 | `net-wireless/linssid` | LinSSID Wi-Fi scanner. |
 | `sci-libs/gsl` | GNU Scientific Library. |
 | `sci-ml/ollama` | Ollama LLM runner. |
@@ -98,6 +99,7 @@ Each package is a matrix entry describing how to detect its latest version
 | `archive` | scrape a directory index with a regex |
 | `github` | latest GitHub release tag |
 | `github_tag` | latest matching GitHub tag |
+| `ngrok_changelog` | read latest ngrok Agent version from the official changelog |
 | `mozilla_esr` | Mozilla ESR product-details |
 | `spirv_per_slot` | newest SPIRV tag per LLVM slot |
 | `torbrowser_torproject` | Tor Project AUS download API |

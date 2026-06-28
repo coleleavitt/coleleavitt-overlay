@@ -1,0 +1,13 @@
+ngrok Agent Terms of Service license reference
+
+The ngrok Agent is distributed by ngrok, Inc. under the ngrok Terms of Service:
+https://ngrok.com/tos
+
+The terms grant a non-exclusive, non-transferable, non-sublicensable,
+revocable right to download and copy the ngrok Agent. Distribution rights are
+limited by the Terms of Service and may require an ngrok account or prior
+written consent depending on the recipient and use case. The ngrok Agent is not
+open source, and source code is not available.
+
+This overlay ebuild fetches the Agent from ngrok-owned distribution hosts and
+sets RESTRICT="bindist mirror strip".

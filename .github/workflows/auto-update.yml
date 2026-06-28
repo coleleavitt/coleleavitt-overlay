@@ -18,6 +18,7 @@ on:
           - mesa_clc
           - spidermonkey
           - vesktop-bin
+          - ngrok-bin
           - zen-browser-bin
           - uefitool
           - uutils-coreutils
@@ -123,6 +124,16 @@ jobs:
             check_repo: Vencord/Vesktop
             strip_v: true
             downloads: '[{"url":"https://github.com/Vencord/Vesktop/releases/download/v{VERSION}/vesktop-{VERSION}.tar.gz","filename":"vesktop-{VERSION}.tar.gz"},{"url":"https://github.com/Vencord/Vesktop/releases/download/v{VERSION}/vesktop-{VERSION}-arm64.tar.gz","filename":"vesktop-{VERSION}-arm64.tar.gz"}]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
+          - package: ngrok-bin
+            category: net-proxy
+            pkg_name: ngrok-bin
+            check_type: ngrok_changelog
+            check_url: https://ngrok.com/docs/agent/changelog
+            downloads: '[{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-amd64.tgz","filename":"ngrok-bin-{VERSION}-amd64.tgz"},{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-arm.tgz","filename":"ngrok-bin-{VERSION}-arm.tgz"},{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-arm64.tgz","filename":"ngrok-bin-{VERSION}-arm64.tgz"},{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-mips.tgz","filename":"ngrok-bin-{VERSION}-mips.tgz"},{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-ppc64.tgz","filename":"ngrok-bin-{VERSION}-ppc64.tgz"},{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-s390x.tgz","filename":"ngrok-bin-{VERSION}-s390.tgz"},{"url":"https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-{VERSION}-linux-386.tgz","filename":"ngrok-bin-{VERSION}-i386.tgz"}]'
             llvm_enabled: false
             llvm_min: ''
             llvm_style: ''
@@ -291,6 +302,9 @@ jobs:
                 else
                   LATEST="$TAG"
                 fi
+                ;;
+              ngrok_changelog)
+                LATEST=$(curl -sL "$CHECK_URL" | grep -oP 'ngrok Agent \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
                 ;;
               mozilla_esr)
                 LATEST=$(curl -s "https://product-details.mozilla.org/1.0/firefox_versions.json" | \
