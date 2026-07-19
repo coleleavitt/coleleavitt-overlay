@@ -201,12 +201,18 @@ src_install() {
 	# --- Launcher ---
 	# Points camoufox-js at the packaged browser via CAMOUFOX_INSTALL_DIR
 	# (respecting any user override) and runs the ESM entrypoint under Node.
+	#
+	# Invoke the system Node by absolute path, NOT bare `node`: the
+	# better-sqlite3 binding is compiled against this exact Node.js ABI at
+	# build time, and a version manager (nvm/fnm/volta) earlier in the user's
+	# PATH would otherwise shadow it and trigger an ABI mismatch
+	# ("undefined symbol" / "NODE_MODULE_VERSION") at browser launch.
 	cat > "${T}/${PN}" <<-EOF || die
 		#!/usr/bin/env bash
 		set -euo pipefail
 		: "\${CAMOUFOX_INSTALL_DIR:=${CAMOUFOX_DIR}}"
 		export CAMOUFOX_INSTALL_DIR
-		exec node "${NODE_APP_DIR}/bin/camofox-browser.js" "\$@"
+		exec /usr/bin/node "${NODE_APP_DIR}/bin/camofox-browser.js" "\$@"
 	EOF
 	dobin "${T}/${PN}"
 
