@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>cole@cole.local</email>
+		<name>Cole Leavitt</name>
+	</maintainer>
+	<longdescription lang="en">
+		camofox-browser is an anti-detection browser automation server for AI
+		agents. It exposes a REST API that wraps the Camoufox stealth browser
+		engine — a Firefox fork with C++-level fingerprint spoofing — driven
+		through camoufox-js and playwright-core. This binary package installs
+		the Node.js application together with a pinned, hash-verified Camoufox
+		browser bundle, so no browser download happens at runtime.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">jo-inc/camofox-browser</remote-id>
+		<bugs-to>https://github.com/jo-inc/camofox-browser/issues</bugs-to>
+	</upstream>
+</pkgmetadata>
