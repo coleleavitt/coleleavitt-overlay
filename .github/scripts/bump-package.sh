@@ -21,13 +21,11 @@ echo "=== Bumping ${PKG_DIR} from ${CURRENT} to ${VERSION} ==="
 cd "${PKG_DIR}"
 
 # --- Find template ebuild ---
-TEMPLATE=""
-for pattern in "${PKG_NAME}-${CURRENT}.ebuild" "${PKG_NAME}-${CURRENT}-r"*.ebuild; do
-  if compgen -G "$pattern" >/dev/null 2>&1; then
-    TEMPLATE=$(ls $pattern 2>/dev/null | sort -V | tail -1)
-    break
-  fi
-done
+# Prefer the highest revision of the current version so policy-only -rN fixes
+# are inherited by the next upstream version bump.
+TEMPLATE=$(find . -maxdepth 1 -type f \
+  \( -name "${PKG_NAME}-${CURRENT}.ebuild" -o -name "${PKG_NAME}-${CURRENT}-r*.ebuild" \) \
+  -printf '%f\n' | sort -V | tail -1)
 if [ -z "$TEMPLATE" ]; then
   TEMPLATE=$(ls ${PKG_NAME}-*.ebuild 2>/dev/null | sort -V | tail -1)
 fi
