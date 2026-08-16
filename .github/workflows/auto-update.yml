@@ -138,14 +138,17 @@ jobs:
             llvm_min: ''
             llvm_style: ''
 
-          # ── zen-browser-bin ──
+          # ── zen-browser-bin (Twilight channel) ──
+          # The upstream twilight-1 release is mutable. Detection turns its
+          # asset update timestamp into a Gentoo _p version, and the dedicated
+          # bump script mirrors binaries to an immutable overlay release.
           - package: zen-browser-bin
             category: www-client
             pkg_name: zen-browser-bin
-            check_type: github
+            check_type: zen_twilight
             check_repo: zen-browser/desktop
-            strip_v: false
-            downloads: '[{"url":"https://github.com/zen-browser/desktop/releases/download/{VERSION}/zen.linux-x86_64.tar.xz","filename":"zen-browser-bin-{VERSION}-x86_64.tar.xz"},{"url":"https://github.com/zen-browser/desktop/releases/download/{VERSION}/zen.linux-aarch64.tar.xz","filename":"zen-browser-bin-{VERSION}-aarch64.tar.xz"}]'
+            check_tag: twilight-1
+            downloads: '[]'
             llvm_enabled: false
             llvm_min: ''
             llvm_style: ''
@@ -273,7 +276,9 @@ jobs:
           CHECK_REGEX: ${{ matrix.check_regex }}
           CHECK_REPO: ${{ matrix.check_repo }}
           CHECK_PATH: ${{ matrix.check_path }}
+          CHECK_TAG: ${{ matrix.check_tag }}
           STRIP_V: ${{ matrix.strip_v }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_PREFIX: ${{ matrix.tag_prefix }}
           CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -302,6 +307,13 @@ jobs:
                 else
                   LATEST="$TAG"
                 fi
+                ;;
+              zen_twilight)
+                RELEASE_JSON=$(gh api "repos/${CHECK_REPO}/releases/tags/${CHECK_TAG}")
+                TWILIGHT_VERSION=$(echo "$RELEASE_JSON" | jq -er '.name | capture("Twilight build - (?<version>[0-9]+\\.[0-9]+t)").version')
+                ASSET_UPDATED=$(echo "$RELEASE_JSON" | jq -er '.assets[] | select(.name == "zen.linux-x86_64.tar.xz") | .updated_at')
+                BUILD_STAMP=$(date --utc --date="$ASSET_UPDATED" +%Y%m%d%H%M%S)
+                LATEST="${TWILIGHT_VERSION}_p${BUILD_STAMP}"
                 ;;
               ngrok_changelog)
                 LATEST=$(curl -sL "$CHECK_URL" | grep -oP 'ngrok Agent \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
@@ -378,7 +390,7 @@ jobs:
 
       # ── Bump ebuild using shared script (standard packages) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
-        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject' && matrix.check_type != 'cursor_api'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject' && matrix.check_type != 'cursor_api' && matrix.check_type != 'zen_twilight'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -390,6 +402,18 @@ jobs:
           LLVM_MIN: ${{ matrix.llvm_min }}
           LLVM_STYLE: ${{ matrix.llvm_style }}
         run: bash .github/scripts/bump-package.sh
+
+      # ── Mirror mutable Zen Twilight assets and create timestamped ebuild ──
+      - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (Twilight)
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'zen_twilight'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_CATEGORY: ${{ matrix.category }}
+          PKG_NAME: ${{ matrix.pkg_name }}
+          VERSION: ${{ steps.check.outputs.version }}
+          CURRENT: ${{ steps.check.outputs.current }}
+          MIRROR_REPOSITORY: ${{ github.repository }}
+        run: bash .github/scripts/bump-zen-twilight.sh
 
       # ── Bump cursor via dedicated script (version + BUILD_ID) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (cursor)
