@@ -38,3 +38,14 @@ jobs:
           #   UnknownUseFlags   — overlay-local USE flags (clang, flatpak)
           #   UnknownKeywords   — ** keyword for live builds
           args: --exit error,-NonsolvableDepsInStable,-NonsolvableDepsInDev,-NonsolvableDepsInExp,-VisibleVcsPkg,-UnknownMirror,-RedundantVersion,-UnknownLicense,-UnknownUseFlags,-UnknownKeywords
+
+  nvidia-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout overlay
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Check kernel module and userspace versions match
+        run: bash .github/scripts/check-nvidia-pin.sh

@@ -27,6 +27,7 @@ on:
           - cmake
           - spirv-llvm-translator
           - torbrowser
+          - nvidia-drivers
         default: all
       version:
         description: 'Version override (empty = detect latest)'
@@ -240,6 +241,21 @@ jobs:
             llvm_min: ''
             llvm_style: mirror
 
+          # ── nvidia-drivers ──
+          # Kernel modules come from a fork pinned to one commit. Detection
+          # reads NVIDIA_VERSION from version.mk at the branch head, so the
+          # userspace version always follows the kernel module.
+          - package: nvidia-drivers
+            category: x11-drivers
+            pkg_name: nvidia-drivers
+            check_type: nvidia_fork
+            check_repo: coleleavitt/open-gpu-kernel-modules
+            check_tag: coleleavitt/dev
+            downloads: '[]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
     concurrency:
       group: overlay-push
       cancel-in-progress: false
@@ -314,6 +330,16 @@ jobs:
                 ASSET_UPDATED=$(echo "$RELEASE_JSON" | jq -er '.assets[] | select(.name == "zen.linux-x86_64.tar.xz") | .updated_at')
                 BUILD_STAMP=$(date --utc --date="$ASSET_UPDATED" +%Y%m%d%H%M%S)
                 LATEST="${TWILIGHT_VERSION}_p${BUILD_STAMP}"
+                ;;
+              nvidia_fork)
+                COMMIT_JSON=$(gh api "repos/${CHECK_REPO}/commits/${CHECK_TAG}")
+                COMMIT=$(echo "$COMMIT_JSON" | jq -er '.sha')
+                COMMIT_DATE=$(echo "$COMMIT_JSON" | jq -er '.commit.committer.date')
+                KMOD_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/${CHECK_REPO}/${COMMIT}/version.mk" | \
+                  sed -n 's/^NVIDIA_VERSION = //p')
+                LATEST="${KMOD_VERSION}_p$(date --utc --date="$COMMIT_DATE" +%Y%m%d%H%M%S)"
+                echo "commit=${COMMIT}" >> $GITHUB_OUTPUT
+                echo "${CHECK_REPO}@${CHECK_TAG}: commit=${COMMIT} NVIDIA_VERSION=${KMOD_VERSION}"
                 ;;
               ngrok_changelog)
                 LATEST=$(curl -sL "$CHECK_URL" | grep -oP 'ngrok Agent \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
@@ -390,7 +416,7 @@ jobs:
 
       # ── Bump ebuild using shared script (standard packages) ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }}
-        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject' && matrix.check_type != 'cursor_api' && matrix.check_type != 'zen_twilight'
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type != 'spirv_per_slot' && matrix.check_type != 'torbrowser_torproject' && matrix.check_type != 'cursor_api' && matrix.check_type != 'zen_twilight' && matrix.check_type != 'nvidia_fork'
         env:
           PKG_CATEGORY: ${{ matrix.category }}
           PKG_NAME: ${{ matrix.pkg_name }}
@@ -425,6 +451,19 @@ jobs:
           CURRENT: ${{ steps.check.outputs.current }}
           BUILD_ID: ${{ steps.check.outputs.build_id }}
         run: bash .github/scripts/bump-cursor.sh
+
+      # ── Pin nvidia-drivers to the fork's new commit ──
+      - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (fork commit)
+        if: steps.check.outputs.update-needed == 'true' && matrix.check_type == 'nvidia_fork'
+        env:
+          PKG_CATEGORY: ${{ matrix.category }}
+          PKG_NAME: ${{ matrix.pkg_name }}
+          VERSION: ${{ steps.check.outputs.version }}
+          CURRENT: ${{ steps.check.outputs.current }}
+          COMMIT: ${{ steps.check.outputs.commit }}
+        run: |
+          bash .github/scripts/bump-nvidia-fork.sh
+          bash .github/scripts/check-nvidia-pin.sh
 
       # ── Bump torbrowser via overlay-mirror script ──
       - name: Bump ${{ matrix.category }}/${{ matrix.pkg_name }} (overlay mirror)

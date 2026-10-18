@@ -5,26 +5,27 @@ EAPI=8
 
 MODULES_OPTIONAL_IUSE=+modules
 inherit desktop dot-a eapi9-pipestatus eapi9-ver flag-o-matic linux-mod-r1
-inherit readme.gentoo-r1 systemd toolchain-funcs unpacker user-info git-r3
+inherit readme.gentoo-r1 systemd toolchain-funcs unpacker user-info
 
-# Userspace version. Must equal NVIDIA_VERSION in version.mk on EGIT_BRANCH;
-# src_prepare dies on a mismatch.
-NV_DRIVER_VERSION="615.71.09"
+# Kernel modules come from the fork at a pinned commit; PV is
+# <userspace version>_p<commit timestamp>. NV_DRIVER_VERSION must equal
+# NVIDIA_VERSION in version.mk at that commit (src_prepare checks it).
+NV_KMOD_REPO="coleleavitt/open-gpu-kernel-modules"
+NV_KMOD_COMMIT="4bcb6289bb0bdb91d263cc0e6af9ec0180d49a40"
+NV_DRIVER_VERSION=${PV%_p*}
 MODULES_KERNEL_MAX=7.99
 NV_URI="https://download.nvidia.com/XFree86/"
 
-DESCRIPTION="NVIDIA Accelerated Graphics Driver (live git kernel modules)"
+DESCRIPTION="NVIDIA Accelerated Graphics Driver (kernel modules from a pinned fork commit)"
 HOMEPAGE="https://www.nvidia.com/ https://github.com/coleleavitt/open-gpu-kernel-modules"
-
-# Git repo for kernel modules (your fork with patches)
-EGIT_REPO_URI="https://github.com/coleleavitt/open-gpu-kernel-modules.git"
-EGIT_BRANCH="coleleavitt/dev"
 
 SRC_URI="
 	amd64? ( ${NV_URI}Linux-x86_64/${NV_DRIVER_VERSION}/NVIDIA-Linux-x86_64-${NV_DRIVER_VERSION}.run )
 	arm64? ( ${NV_URI}Linux-aarch64/${NV_DRIVER_VERSION}/NVIDIA-Linux-aarch64-${NV_DRIVER_VERSION}.run )
 	$(printf "${NV_URI}%s/%s-${NV_DRIVER_VERSION}.tar.bz2 " \
 		nvidia-{installer,modprobe,persistenced,settings,xconfig}{,})
+	https://github.com/${NV_KMOD_REPO}/archive/${NV_KMOD_COMMIT}.tar.gz
+		-> nvidia-open-gpu-kernel-modules-${NV_KMOD_COMMIT}.tar.gz
 "
 S=${WORKDIR}
 
@@ -33,7 +34,7 @@ LICENSE="
 	curl openssl public-domain
 "
 SLOT="0/${NV_DRIVER_VERSION%%.*}"
-KEYWORDS=""
+KEYWORDS="-* ~amd64"
 IUSE="
 	+X abi_x86_32 abi_x86_64 +kernel-open persistenced powerd
 	+static-libs +tools wayland
@@ -155,8 +156,7 @@ src_unpack() {
 		unpack ${tarball}
 	done
 
-	# Clone kernel module source from git
-	git-r3_src_unpack
+	unpack nvidia-open-gpu-kernel-modules-${NV_KMOD_COMMIT}.tar.gz
 }
 
 src_prepare() {
@@ -166,15 +166,14 @@ src_prepare() {
 	rm -f nvidia-settings && mv nvidia-settings{-${NV_DRIVER_VERSION},} || die
 	rm -f nvidia-xconfig && mv nvidia-xconfig{-${NV_DRIVER_VERSION},} || die
 
-	# Link the git-cloned kernel modules as kernel-module-source
-	ln -s "${WORKDIR}/${P}" "${WORKDIR}/kernel-module-source" || die
+	mv open-gpu-kernel-modules-${NV_KMOD_COMMIT} kernel-module-source || die
 
 	# The kernel module loads firmware from /lib/firmware/nvidia/<its version>
 	# and refuses userspace of any other version, so both must match.
 	local kmod_ver
 	kmod_ver=$(sed -n 's/^NVIDIA_VERSION = //p' kernel-module-source/version.mk) || die
 	[[ ${kmod_ver} == "${NV_DRIVER_VERSION}" ]] ||
-		die "${EGIT_BRANCH} is NVIDIA ${kmod_ver} but NV_DRIVER_VERSION is ${NV_DRIVER_VERSION}"
+		die "${NV_KMOD_REPO}@${NV_KMOD_COMMIT} is NVIDIA ${kmod_ver} but NV_DRIVER_VERSION is ${NV_DRIVER_VERSION}"
 
 	default
 
@@ -311,8 +310,8 @@ src_install() {
 Trusted users should be in the 'video' group to use NVIDIA devices.
 You can add yourself by using: gpasswd -a my-user video
 
-This is a LIVE ebuild pulling kernel modules from:
-https://github.com/coleleavitt/open-gpu-kernel-modules
+Kernel modules are built from:
+https://github.com/${NV_KMOD_REPO}/tree/${NV_KMOD_COMMIT}
 
 Userspace components are from version ${NV_DRIVER_VERSION}."
 	readme.gentoo_create_doc
@@ -482,8 +481,8 @@ pkg_postinst() {
 	readme.gentoo_print_elog
 
 	elog ""
-	elog "This is a LIVE ebuild using kernel modules from your GitHub fork:"
-	elog "  https://github.com/coleleavitt/open-gpu-kernel-modules"
+	elog "Kernel modules are built from:"
+	elog "  https://github.com/${NV_KMOD_REPO}/tree/${NV_KMOD_COMMIT}"
 	elog ""
 	elog "Userspace and kernel modules are version ${NV_DRIVER_VERSION}"
 	elog ""
