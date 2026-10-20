@@ -11,7 +11,7 @@ inherit readme.gentoo-r1 systemd toolchain-funcs unpacker user-info
 # <userspace version>_p<commit timestamp>. NV_DRIVER_VERSION must equal
 # NVIDIA_VERSION in version.mk at that commit (src_prepare checks it).
 NV_KMOD_REPO="coleleavitt/open-gpu-kernel-modules"
-NV_KMOD_COMMIT="4bcb6289bb0bdb91d263cc0e6af9ec0180d49a40"
+NV_KMOD_COMMIT="5efe9800caecf964ed2ef5705dd971b13766782e"
 NV_DRIVER_VERSION=${PV%_p*}
 MODULES_KERNEL_MAX=7.99
 NV_URI="https://download.nvidia.com/XFree86/"
