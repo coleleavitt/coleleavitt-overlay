@@ -74,14 +74,12 @@ src_install() {
 	insinto "${destdir}"
 	doins -r ./*
 
-	# Set executable permissions for binaries that exist
-	local binaries=(zen-bin zen updater glxtest vaapitest)
-	local bin
-	for bin in "${binaries[@]}"; do
-		if [[ -f "${D}${destdir}/${bin}" ]]; then
-			fperms 0755 "${destdir}/${bin}"
-		fi
-	done
+	# doins installs everything 0644; restore the exec bits the upstream
+	# tarball ships (zen, gfxtest, updater, the .so files, ...).
+	local f
+	while IFS= read -r -d '' f; do
+		fperms 0755 "${destdir}/${f#./}"
+	done < <(find . -type f -perm -u+x -print0 || die)
 
 	# Set permissions for pingsender if it exists
 	if [[ -f "${D}${destdir}/pingsender" ]]; then
