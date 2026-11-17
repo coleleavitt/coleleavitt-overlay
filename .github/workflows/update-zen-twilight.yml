@@ -1,0 +1,128 @@
+name: Update Zen Browser Twilight
+
+on:
+  schedule:
+    - cron: '15 6 * * *'  # 6:15 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-zen-twilight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream twilight
+        id: check
+        run: |
+          # Get upstream twilight release info
+          UPSTREAM=$(curl -sL 'https://api.github.com/repos/zen-browser/desktop/releases/tags/twilight')
+          PUBLISHED=$(echo "$UPSTREAM" | jq -r '.published_at')
+          # Format: 1.25t_p20261116015746 (YYYYMMDDHHmmss from published_at)
+          TS=$(date -d "$PUBLISHED" +%Y%m%d%H%M%S)
+          # Get the Firefox version from the release name or body
+          BODY=$(echo "$UPSTREAM" | jq -r '.body // ""')
+          # Extract version - twilight uses format like "1.25t" in release
+          # For now, use a simple version bump approach
+          LATEST_EBUILD=$(ls www-client/zen-browser-bin/*.ebuild 2>/dev/null | grep -E '[0-9]+\.[0-9]+t_p' | sort -V | tail -1 || echo "")
+          if [[ -n "$LATEST_EBUILD" ]]; then
+            CURRENT_VER=$(basename "$LATEST_EBUILD" .ebuild | sed 's/zen-browser-bin-//')
+            CURRENT_TS=$(echo "$CURRENT_VER" | grep -oP '_p\K[0-9]+')
+          else
+            CURRENT_TS="0"
+          fi
+          
+          echo "current_ts=$CURRENT_TS" >> $GITHUB_OUTPUT
+          echo "new_ts=$TS" >> $GITHUB_OUTPUT
+          
+          if [[ "$TS" -gt "$CURRENT_TS" ]]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            # Determine version - check upstream releases for the base version
+            BASE_VER=$(curl -sL 'https://api.github.com/repos/zen-browser/desktop/releases' | jq -r '.[0].tag_name' | sed 's/b$//')
+            # Twilight is typically one minor ahead
+            TWILIGHT_VER="${BASE_VER%.*}.$((${BASE_VER##*.} + 1))t"
+            # Fallback to extracting from existing or use 1.25t
+            if [[ -n "$LATEST_EBUILD" ]]; then
+              TWILIGHT_VER=$(echo "$CURRENT_VER" | grep -oP '^[0-9]+\.[0-9]+t')
+            fi
+            echo "version=${TWILIGHT_VER}_p${TS}" >> $GITHUB_OUTPUT
+            echo "twilight_ver=$TWILIGHT_VER" >> $GITHUB_OUTPUT
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download twilight tarballs
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          mkdir -p dist
+          curl -L -o dist/zen.linux-x86_64.tar.xz             'https://github.com/zen-browser/desktop/releases/download/twilight/zen.linux-x86_64.tar.xz'
+          curl -L -o dist/zen.linux-aarch64.tar.xz             'https://github.com/zen-browser/desktop/releases/download/twilight/zen.linux-aarch64.tar.xz'
+
+      - name: Create GitHub release with assets
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.check.outputs.version }}"
+          TAG="zen-browser-${VERSION}"
+          
+          gh release create "$TAG"             --title "Zen Browser Twilight $VERSION"             --notes "Automated twilight build from upstream"             dist/zen.linux-x86_64.tar.xz             dist/zen.linux-aarch64.tar.xz
+
+      - name: Create ebuild
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          VERSION="${{ steps.check.outputs.version }}"
+          cd www-client/zen-browser-bin
+          
+          # Copy from latest twilight ebuild
+          LATEST=$(ls -1 *t_p*.ebuild 2>/dev/null | sort -V | tail -1)
+          if [[ -z "$LATEST" ]]; then
+            echo "No twilight ebuild template found!"
+            exit 1
+          fi
+          
+          cp "$LATEST" "zen-browser-bin-${VERSION}.ebuild"
+          echo "Created zen-browser-bin-${VERSION}.ebuild"
+
+      - name: Update Manifest
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          VERSION="${{ steps.check.outputs.version }}"
+          cd www-client/zen-browser-bin
+          
+          # Compute hashes for tarballs
+          X86_SIZE=$(stat -c%s ../../dist/zen.linux-x86_64.tar.xz)
+          X86_B2=$(b2sum ../../dist/zen.linux-x86_64.tar.xz | cut -d' ' -f1)
+          X86_SHA512=$(sha512sum ../../dist/zen.linux-x86_64.tar.xz | cut -d' ' -f1)
+          
+          ARM_SIZE=$(stat -c%s ../../dist/zen.linux-aarch64.tar.xz)
+          ARM_B2=$(b2sum ../../dist/zen.linux-aarch64.tar.xz | cut -d' ' -f1)
+          ARM_SHA512=$(sha512sum ../../dist/zen.linux-aarch64.tar.xz | cut -d' ' -f1)
+          
+          # Compute hash for ebuild
+          EB_SIZE=$(stat -c%s "zen-browser-bin-${VERSION}.ebuild")
+          EB_B2=$(b2sum "zen-browser-bin-${VERSION}.ebuild" | cut -d' ' -f1)
+          EB_SHA512=$(sha512sum "zen-browser-bin-${VERSION}.ebuild" | cut -d' ' -f1)
+          
+          # Add to Manifest
+          echo "DIST zen-browser-bin-${VERSION}-aarch64.tar.xz $ARM_SIZE BLAKE2B $ARM_B2 SHA512 $ARM_SHA512" >> Manifest
+          echo "DIST zen-browser-bin-${VERSION}-x86_64.tar.xz $X86_SIZE BLAKE2B $X86_B2 SHA512 $X86_SHA512" >> Manifest
+          echo "EBUILD zen-browser-bin-${VERSION}.ebuild $EB_SIZE BLAKE2B $EB_B2 SHA512 $EB_SHA512" >> Manifest
+          
+          # Sort manifest (DIST, EBUILD, MISC sections)
+          grep '^DIST ' Manifest | sort -u > Manifest.new
+          grep '^EBUILD ' Manifest | sort -u >> Manifest.new
+          grep '^MISC ' Manifest | sort -u >> Manifest.new
+          mv Manifest.new Manifest
+
+      - name: Commit and push
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          VERSION="${{ steps.check.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add www-client/zen-browser-bin/
+          git commit -m "www-client/zen-browser-bin: add ${VERSION} (twilight)"
+          git push
