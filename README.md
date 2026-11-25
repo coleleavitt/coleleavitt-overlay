@@ -51,6 +51,7 @@ emerge -av app-editors/cursor
 | `dev-db/surrealdb-bin` | SurrealDB (bin). |
 | `dev-lang/spidermonkey` | SpiderMonkey (auto-updated, LLVM-tracking). |
 | `dev-lang/swift-bin` | Swift toolchain (bin). |
+| `dev-qt/qtpositioning` | Qt Positioning 6.11.1, matching the installed Qt for `www-client/ladybird-bin`. |
 | `dev-qt/qttools` | Qt tools (auto-updated). |
 | `dev-util/bpf-linker` | bpf-linker (auto-updated, LLVM-tracking). |
 | `dev-util/mesa_clc` | Mesa standalone CLC (auto-updated). |
@@ -70,6 +71,7 @@ emerge -av app-editors/cursor
 | `sys-apps/xdg-desktop-portal` | xdg-desktop-portal. |
 | `sys-firmware/edk2` | EDK II UEFI firmware. |
 | `sys-firmware/uefitool` | UEFITool (auto-updated). |
+| `www-client/ladybird-bin` | Ladybird browser, official Ubuntu 26.04 `.deb` with its bundled ICU renamed (auto-updated). |
 | `www-client/torbrowser` | Tor Browser (auto-updated from the Tor Project AUS API). |
 | `www-client/zen-browser-bin` | Zen Browser (auto-updated). |
 | `x11-drivers/nvidia-drivers` | NVIDIA drivers. |

@@ -20,6 +20,7 @@ on:
           - vesktop-bin
           - ngrok-bin
           - zen-browser-bin
+          - ladybird-bin
           - uefitool
           - uutils-coreutils
           - qttools
@@ -150,6 +151,19 @@ jobs:
             check_repo: zen-browser/desktop
             check_tag: twilight-1
             downloads: '[]'
+            llvm_enabled: false
+            llvm_min: ''
+            llvm_style: ''
+
+          # ── ladybird-bin ──
+          # Official Ubuntu 26.04 .deb from Ladybird's apt repository.
+          - package: ladybird-bin
+            category: www-client
+            pkg_name: ladybird-bin
+            check_type: archive
+            check_url: https://apt.ladybird.org/dists/resolute/main/binary-amd64/Packages
+            check_regex: 'ladybird_\K[0-9]+\.[0-9]+\.[0-9]+(?=-1~ubuntu26\.04_amd64\.deb)'
+            downloads: '[{"url":"https://apt.ladybird.org/pool/main/l/ladybird/ladybird_{VERSION}-1~ubuntu26.04_amd64.deb","filename":"ladybird-bin-{VERSION}-amd64.deb"},{"url":"https://apt.ladybird.org/pool/main/l/ladybird/ladybird_{VERSION}-1~ubuntu26.04_arm64.deb","filename":"ladybird-bin-{VERSION}-arm64.deb"}]'
             llvm_enabled: false
             llvm_min: ''
             llvm_style: ''

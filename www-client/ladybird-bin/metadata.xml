@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>coleleavitt@users.noreply.github.com</email>
+		<name>Cole Leavitt</name>
+	</maintainer>
+	<longdescription>
+		Ladybird is an independent web browser built on a new engine written
+		from scratch around web standards. This package installs the official
+		prebuilt Ubuntu 26.04 build from apt.ladybird.org.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">LadybirdBrowser/ladybird</remote-id>
+		<bugs-to>https://github.com/LadybirdBrowser/ladybird/issues</bugs-to>
+	</upstream>
+</pkgmetadata>
